@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>DeepSeek 娘 · 白饭大冲刺</title>
 <meta name="theme-color" content="#050a16">
+<!-- iOS exposes no Fullscreen API for pages, so an installed home-screen app is
+     the only chrome-free option there; these let 分享 → 添加到主屏幕 launch
+     without Safari's toolbars. -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="白饭大冲刺">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=M+PLUS+Rounded+1c:wght@700;800&display=swap" rel="stylesheet">
@@ -128,6 +135,10 @@
     filter:drop-shadow(0 2px 0 rgba(4,16,31,.6))}
   .life.lost{opacity:.2;filter:grayscale(1) brightness(.65);transform:scale(.74)}
 
+  /* NOTE: this row lives inside #hud (z-index 2), so nothing in it can ever paint
+     above #overlay (z-index 6): on the title and game-over cards these buttons are
+     covered and inert, which is why the fullscreen entry point a player looks for
+     first also exists on the title card itself. */
   #btns{display:flex;gap:9px;pointer-events:auto}
   .btn{
     height:48px;min-width:48px;padding:0;border-radius:14px;border:2px solid var(--line);
@@ -144,6 +155,20 @@
   .btn.off{color:var(--faint);border-color:rgba(92,115,145,.42);filter:saturate(.45) brightness(.9)}
   #btnShop{width:auto;padding:0 16px 0 11px;font-size:16px;letter-spacing:.06em}
   .btnTip{font-size:16px}
+  /* Fullscreen glyph, drawn in CSS: the asset pipeline's ui set is a fixed list
+     that must match disk exactly, and a 20px corner bracket is not worth a PNG.
+     currentColor so the same glyph works on the HUD button and on the title
+     card's lighter plate. */
+  .jsFs.hide{display:none}
+  .fsIco{position:relative;display:inline-block;width:20px;height:20px;flex:0 0 auto}
+  .fsIco::before,.fsIco::after,.fsIco i::before,.fsIco i::after{
+    content:"";position:absolute;width:8px;height:8px;
+    border:2px solid currentColor;border-radius:2px;
+  }
+  .fsIco::before{left:0;top:0;border-right:0;border-bottom:0}
+  .fsIco::after{right:0;bottom:0;border-left:0;border-top:0}
+  .fsIco i::before{right:0;top:0;border-left:0;border-bottom:0}
+  .fsIco i::after{left:0;bottom:0;border-right:0;border-top:0}
 
   /* In the flow of #topright, NOT absolutely positioned: the column above it
      grows and shrinks with the dash charges and the life count, and anything
@@ -282,6 +307,21 @@
     animation:breathe 2.4s ease-in-out infinite;
   }
   .bigbtn img{width:32px;height:32px;object-fit:contain}
+  /* Secondary big button (全屏): same plate language, no call to action. */
+  .bigbtn.ghost{
+    padding:13px 26px;font-size:20px;gap:11px;
+    color:var(--cyan);background:linear-gradient(180deg,rgba(38,80,140,.72),rgba(12,32,64,.88));
+    border:3px solid var(--line);box-shadow:0 6px 0 rgba(4,16,31,.8),inset 0 1px 0 rgba(255,255,255,.16);
+    animation:none;
+  }
+  .bigbtn.ghost:hover{box-shadow:0 8px 0 rgba(4,16,31,.8),0 0 26px rgba(98,232,255,.35),
+    inset 0 1px 0 rgba(255,255,255,.2)}
+  .bigbtn.ghost:active{box-shadow:0 2px 0 rgba(4,16,31,.8),inset 0 1px 0 rgba(255,255,255,.12)}
+  /* The start row keeps the single-button height: adding a control beside 开始游戏
+     must not push the title card taller, it is the tightest card in the game. */
+  .startRow{display:flex;align-items:center;justify-content:center;gap:14px;
+    flex-wrap:wrap;margin-top:14px}
+  .startRow .bigbtn{margin:0}
   .bigbtn:hover{transform:translateY(-2px);filter:brightness(1.07);
     box-shadow:0 8px 0 #0a5c86,0 0 44px rgba(98,232,255,.65),inset 0 2px 0 rgba(255,255,255,.8)}
   .bigbtn:active{transform:translateY(4px);animation:none;
@@ -529,6 +569,40 @@
   .siTag.eco{color:var(--gold-2)}
   .siTag.up{color:#ff9ad2}
 
+  /* ========================================================== touch pad ==== */
+  /* Pinned to the viewport rather than to the 1280x720 stage on purpose: inside
+     the stage these would be scaled down with the world and land around 25px on
+     a phone, well under any touch-target guideline, and they would move around
+     under the thumb every time the window changed size. */
+  #pad{position:fixed;inset:0;z-index:8;display:none;pointer-events:none}
+  @media (hover:none) and (pointer:coarse){ #pad{display:block} }
+  #pad.hide{display:none}
+  #pad .side{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom,0px));display:flex;gap:14px;align-items:flex-end}
+  #pad .side.l{left:calc(18px + env(safe-area-inset-left,0px))}
+  #pad .side.r{right:calc(18px + env(safe-area-inset-right,0px))}
+  #pad button{
+    pointer-events:auto;touch-action:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    width:88px;height:88px;border-radius:50%;padding:0;
+    border:2px solid var(--line);color:var(--cyan);font-weight:800;font-size:17px;letter-spacing:.06em;
+    background:linear-gradient(180deg,rgba(30,68,120,.6),rgba(5,14,32,.72));
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    box-shadow:0 3px 0 rgba(4,16,31,.65),inset 0 1px 0 rgba(255,255,255,.18);
+    /* Slightly see-through when idle: the pads sit over the track and the runner
+       still has to be readable underneath them. */
+    opacity:.88;
+    transition:transform .08s,filter .12s,border-color .12s,opacity .15s;
+  }
+  #pad button i{font-style:normal;font-size:10.5px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+  #pad button.held{transform:translateY(2px) scale(.95);border-color:rgba(152,240,255,.9);
+    filter:brightness(1.28);opacity:1;
+    box-shadow:0 1px 0 rgba(4,16,31,.65),0 0 22px rgba(98,232,255,.45)}
+  #pad button.off{opacity:.4;filter:saturate(.4)}
+  #pad .jump{width:116px;height:116px;font-size:21px;
+    border-color:rgba(140,225,255,.62);
+    background:linear-gradient(180deg,rgba(52,104,176,.62),rgba(10,26,52,.74))}
+  #pad .jump i{font-size:11px}
+
   /* ============================================================ rotate ===== */
   /* The stage is 16:9, so a portrait phone can only ever show a sliver of it
      (a 390px-wide screen lands on a ~0.3 scale with two thirds of the track
@@ -551,6 +625,10 @@
   #rotate b{font-size:21px;letter-spacing:.16em;color:var(--cyan);
     text-shadow:0 0 18px rgba(98,232,255,.55)}
   #rotate span{font-size:14px;line-height:1.7;color:var(--muted);max-width:320px}
+  /* iOS only: no Fullscreen API to offer, so point at the one route that works. */
+  .iosHint{display:none;margin-top:10px;font-size:13px;color:var(--gold-2);
+    letter-spacing:.04em;text-shadow:0 0 12px rgba(255,209,102,.45)}
+  body.ios .iosHint{display:block}
   /* Phones only. A portrait tablet or a narrow desktop window still lands on a
      scale around 0.6, which is small but honest, and blocking it would be a
      false alarm. */
@@ -595,6 +673,7 @@
           <button class="btn" id="btnShop" title="技能商店"><img src="assets/ui/icon_shop.png" alt=""><span class="btnTip">商店</span></button>
           <button class="btn" id="btnSound" title="音效开关 (M)"><img id="soundIcon" src="assets/ui/icon_sound.png" alt=""></button>
           <button class="btn" id="btnPause" title="暂停 (P)"><img src="assets/ui/icon_pause.png" alt=""></button>
+          <button class="btn jsFs hide" id="btnFull" title="全屏 (F)"><span class="fsIco"><i></i></span></button>
         </div>
         <div id="powerups"></div>
       </div>
@@ -625,7 +704,10 @@
           <span class="zchip">合规边境</span>
         </div>
 
-        <button class="bigbtn" id="btnStart"><img src="assets/ui/icon_play.png" alt="">开始游戏</button>
+        <div class="startRow">
+          <button class="bigbtn" id="btnStart"><img src="assets/ui/icon_play.png" alt="">开始游戏</button>
+          <button class="bigbtn ghost jsFs hide" id="btnFullCard"><span class="fsIco"><i></i></span>全屏</button>
+        </div>
         <div class="start">按 空格 / Enter 开始</div>
 
         <div class="keybar">
@@ -636,7 +718,8 @@
           <span class="kb"><b>P</b>暂停</span>
           <span class="kb"><b>M</b>静音</span>
         </div>
-        <div class="start">手机：点按跳跃 · 按住滑翔 · 下滑滑铲 / 下砸 · 右滑冲刺</div>
+        <div class="start">手机：右下跳跃（按住滑翔）· 左下冲刺 / 滑铲</div>
+        <div class="iosHint">iPhone 全屏：分享 → 添加到主屏幕</div>
         <div class="best" id="titleBest"></div>
       </div>
 
@@ -685,6 +768,16 @@
   <div class="phone"></div>
   <b>请横屏游玩</b>
   <span>赛道是 16:9 的，竖屏只看得见中间一小条。<br>把手机横过来即可开始。</span>
+</div>
+
+<div id="pad" class="hide">
+  <div class="side l">
+    <button id="padSlide" aria-label="滑铲 / 空中下砸">滑铲<i>按住下砸</i></button>
+    <button id="padDash" aria-label="冲刺">冲刺</button>
+  </div>
+  <div class="side r">
+    <button class="jump" id="padJump" aria-label="跳跃 / 按住滑翔">跳跃<i>按住滑翔</i></button>
+  </div>
 </div>
 
 <script src="src/memes.js"></script>

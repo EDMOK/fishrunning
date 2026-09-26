@@ -755,10 +755,12 @@
   }
 
   function jumpHeld() {
-    // A touch is a jump held too, but fingers never land in `keys`, so the glide
+    // A finger is a held jump too, but fingers never land in `keys`, so the glide
     // has to ask the pointer state as well or the verb simply does not exist on
-    // a phone.
-    if (touchJumpHeld) return true;
+    // a phone. The pad and the swipe gesture keep separate flags because they can
+    // be held at the same time by different thumbs, and either one lifting must
+    // not cancel the other.
+    if (touchJumpHeld || padJumpHeld) return true;
     for (var i = 0; i < JUMP_KEYS.length; i++) if (keys[JUMP_KEYS[i]]) return true;
     return false;
   }
@@ -1711,8 +1713,9 @@
   // is a held jump starting one delay late, so the thresholds below are sized to
   // be crossed by an ordinary flick well inside the window.
   var TAP_DELAY = 80, SWIPE_DOWN = 30, SWIPE_RIGHT = 56;
-  // Fingers hold the jump open for the glide without ever touching `keys`.
-  var touchJumpHeld = false;
+  // Fingers hold the jump open for the glide without ever touching `keys`; the
+  // on-screen pad does the same, and `down` is the pad's slide/stomp hold.
+  var touchJumpHeld = false, padJumpHeld = false, padDown = false;
 
   function jumpPressed() {
     if (game.state === 'title') { startRun(); return; }
@@ -1742,6 +1745,12 @@
       else togglePause();
     } else if (k === 'KeyM') {
       toggleMute();
+    } else if (k === 'KeyF') {
+      e.preventDefault();
+      // Guards the auto-repeat: without it, holding F would enter and leave
+      // fullscreen as fast as the key repeats.
+      if (!keys[k]) toggleFullscreen();
+      keys[k] = true;
     } else if (k === 'Enter') {
       GameAudio.unlock();
       if (game.state === 'title') startRun();
@@ -1769,13 +1778,13 @@
     keys[k] = false;
   }
 
-  function downHeld() { return !!(keys['ArrowDown'] || keys['KeyS']); }
+  function downHeld() { return padDown || !!(keys['ArrowDown'] || keys['KeyS']); }
 
   function bindInput() {
     window.addEventListener('keydown', onKeyDown, { passive: false });
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', function () {
-      keys = {}; endTouch();
+      keys = {}; endTouch(); releasePad();
       if (game.state === 'playing') setPause(true);
     });
 
@@ -1842,6 +1851,102 @@
       if (touchStart && e.pointerId !== touchStart.id) return;
       endTouch();
     });
+  }
+
+  // -------------------------------------------------------------- touch pad
+  // The pad is a second pair of thumbs, not a second input system: each button
+  // drives the same flags the keyboard and the swipe gestures drive, so there is
+  // exactly one implementation of "jump held" and one of "down held" for the
+  // verbs to read. Its buttons sit outside #stage, so the gesture handler never
+  // sees them (and the pads are hidden outside a run, see syncPad).
+  var padBtns = [];
+
+  /** Press-and-hold wiring: pointerdown/up/cancel/leave, with a held class. */
+  function wireHold(el, fn) {
+    if (!el) return;
+    padBtns.push(el);
+    el.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      el.classList.add('held');
+      fn(true);
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
+      el.addEventListener(t, function () {
+        if (!el.classList.contains('held')) return;
+        el.classList.remove('held');
+        fn(false);
+      });
+    });
+  }
+
+  /** Let go of everything the pad is holding — the pad's version of keyup. */
+  function releasePad() {
+    padJumpHeld = false;
+    padDown = false;
+    for (var i = 0; i < padBtns.length; i++) padBtns[i].classList.remove('held');
+  }
+
+  function bindPad() {
+    var pad = document.getElementById('pad');
+    if (!pad) return;
+    hud.pad = pad;
+    hud.padDash = document.getElementById('padDash');
+
+    // Same shape as a keyboard tap: press jumps, holding keeps jumpHeld() true
+    // (that is what the glide reads), and letting go trims a rising first jump.
+    wireHold(document.getElementById('padJump'), function (on) {
+      GameAudio.unlock();
+      if (on) { padJumpHeld = true; jumpPressed(); }
+      else { padJumpHeld = false; cutJump(); }
+    });
+    // Held ↓ is the slide on the ground and the stomp in the air — the same flag
+    // the keyboard writes, so SLIDE_MIN, fast-fall and the stomp arm all apply
+    // unchanged.
+    wireHold(document.getElementById('padSlide'), function (on) {
+      GameAudio.unlock();
+      padDown = on;
+    });
+    if (hud.padDash) {
+      // Tap, not hold: still registered so releasePad can clear its `held`
+      // styling when a run ends mid-press.
+      padBtns.push(hud.padDash);
+      hud.padDash.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        GameAudio.unlock();
+        hud.padDash.classList.add('held');
+        tryDash();
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
+        hud.padDash.addEventListener(t, function () { hud.padDash.classList.remove('held'); });
+      });
+    }
+  }
+
+  // ------------------------------------------------------------- fullscreen
+  function fsElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  function toggleFullscreen() {
+    var root = document.documentElement;
+    var req = root.requestFullscreen || root.webkitRequestFullscreen;
+    var exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (fsElement()) { if (exit) exit.call(document); return; }
+    if (!req) return;
+    var p = req.call(root);
+    // A phone browser's chrome is the thing eating the play area, so fullscreen
+    // is also the moment to ask for landscape. Only Chrome/Android grants this
+    // (and only from fullscreen); iOS keeps its own rotation and refuses quietly.
+    function lockLandscape() {
+      try {
+        var so = screen.orientation;
+        if (!so || !so.lock) return;
+        var r = so.lock('landscape');
+        if (r && r.catch) r.catch(function () {});
+      } catch (err) { /* not supported: rotation stays manual */ }
+    }
+    if (p && p.then) p.then(lockLandscape, function () {});
+    else lockLandscape();
   }
 
   // ------------------------------------------------------------ game control
@@ -2783,7 +2888,29 @@
       update(STEP);
       acc -= STEP;
     }
+    syncPad();
     render();
+  }
+
+  /**
+   * The pad is DOM, and `update()` early-returns on every menu state, so it is
+   * synced once per rendered frame instead. It only exists during a run (it would
+   * otherwise sit on top of the shop board and the pause card), and the dash
+   * button mirrors the charge wallet so a tap that does nothing has a visible
+   * reason.
+   */
+  function syncPad() {
+    if (!hud.pad) return;
+    var on = game.state === 'playing';
+    if (lastHud.padOn !== on) {
+      hud.pad.classList.toggle('hide', !on);
+      if (!on) releasePad();
+      lastHud.padOn = on;
+    }
+    if (hud.padDash && lastHud.padCharges !== player.charges) {
+      hud.padDash.classList.toggle('off', player.charges <= 0);
+      lastHud.padCharges = player.charges;
+    }
   }
 
   function boot() {
@@ -2804,6 +2931,35 @@
     document.getElementById('btnAgain').addEventListener('click', function () { GameAudio.sfx('ui'); restart(); });
     document.getElementById('btnHome').addEventListener('click', function () { GameAudio.sfx('ui'); showTitle(); });
 
+    // Fullscreen exists on desktop browsers and Android; iOS Safari has no API
+    // for it at all, so the controls are dropped rather than left as dead buttons
+    // and the title card points at 添加到主屏幕 instead. Two of them on purpose:
+    // the HUD row is inside #hud, which sits under #overlay, so it is only
+    // reachable mid-run; the title card one is what a phone player finds first.
+    var root = document.documentElement;
+    var canFs = !!(root.requestFullscreen || root.webkitRequestFullscreen);
+    var fsBtns = document.querySelectorAll('.jsFs');
+    for (var fi = 0; fi < fsBtns.length; fi++) {
+      (function (b) {
+        b.classList.toggle('hide', !canFs);
+        b.addEventListener('click', function (e) {
+          e.preventDefault();
+          GameAudio.sfx('ui');
+          toggleFullscreen();
+        });
+      })(fsBtns[fi]);
+    }
+    var ua = navigator.userAgent || '';
+    var isIOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    if (isIOS && !canFs) document.body.classList.add('ios');
+
+    // Entering or leaving fullscreen changes the viewport, and the browser does
+    // not always fire `resize` for it on the way back out.
+    ['fullscreenchange', 'webkitfullscreenchange'].forEach(function (t) {
+      document.addEventListener(t, fitStage);
+    });
+
+    bindPad();
     buildLives();
 
     function showLoadError(err) {
