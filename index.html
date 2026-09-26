@@ -42,7 +42,11 @@
     font-family:"M PLUS Rounded 1c","Baloo 2","PingFang SC","Yuanti SC","Microsoft YaHei UI",
                 "Hiragino Maru Gothic ProN",system-ui,sans-serif;
     color:var(--text);
-    user-select:none;
+    user-select:none;-webkit-user-select:none;
+    /* A held finger is a glide, and on iOS a held finger is also how you raise
+       the callout bubble over a long-pressable element. Suppressing it keeps the
+       verb usable on the platform that invented the gesture. */
+    -webkit-touch-callout:none;
     touch-action:none;
   }
   button{font-family:inherit}
@@ -59,6 +63,12 @@
   }
   #stage{
     position:relative;width:1280px;height:720px;
+    /* #fit is a flex row, and a 1280px item in a narrower one shrinks by default.
+       Shrinking the layout box while the canvas keeps its own 1280px width put
+       the right-hand third of the world outside `overflow:hidden`: the player
+       ran blind into obstacles that were never on screen. The stage must stay
+       1280 wide and let fitStage() scale it down instead. */
+    flex:0 0 auto;
     transform-origin:center center;
     border-radius:20px;overflow:hidden;
     box-shadow:0 0 0 2px rgba(98,232,255,.28),0 0 70px rgba(28,110,210,.28),0 28px 80px rgba(0,0,0,.78);
@@ -519,6 +529,33 @@
   .siTag.eco{color:var(--gold-2)}
   .siTag.up{color:#ff9ad2}
 
+  /* ============================================================ rotate ===== */
+  /* The stage is 16:9, so a portrait phone can only ever show a sliver of it
+     (a 390px-wide screen lands on a ~0.3 scale with two thirds of the track
+     off-screen). Rather than let someone start a run they cannot read, ask for
+     landscape first. Purely a media query: rotating swaps it out with no JS. */
+  #rotate{
+    position:fixed;inset:0;z-index:20;display:none;
+    flex-direction:column;align-items:center;justify-content:center;gap:18px;
+    padding:28px;text-align:center;background:#06101f;
+  }
+  #rotate .phone{
+    position:relative;width:66px;height:110px;border:3px solid var(--cyan);border-radius:13px;
+    box-shadow:var(--glow);animation:turn 2.2s ease-in-out infinite;
+  }
+  #rotate .phone::after{
+    content:"";position:absolute;left:50%;bottom:8px;width:18px;height:3px;
+    margin-left:-9px;border-radius:2px;background:var(--cyan);
+  }
+  @keyframes turn{0%,28%{transform:rotate(0)}62%,100%{transform:rotate(-90deg)}}
+  #rotate b{font-size:21px;letter-spacing:.16em;color:var(--cyan);
+    text-shadow:0 0 18px rgba(98,232,255,.55)}
+  #rotate span{font-size:14px;line-height:1.7;color:var(--muted);max-width:320px}
+  /* Phones only. A portrait tablet or a narrow desktop window still lands on a
+     scale around 0.6, which is small but honest, and blocking it would be a
+     false alarm. */
+  @media (orientation:portrait) and (max-width:600px){ #rotate{display:flex} }
+
   /* ============================================================= helpers === */
   #stage.selecting canvas{filter:saturate(.32) brightness(.5);transition:filter .25s}
 
@@ -599,7 +636,7 @@
           <span class="kb"><b>P</b>暂停</span>
           <span class="kb"><b>M</b>静音</span>
         </div>
-        <div class="start">手机：点按跳跃 · 下滑滑铲 · 右滑冲刺 · 按住滑翔</div>
+        <div class="start">手机：点按跳跃 · 按住滑翔 · 下滑滑铲 / 下砸 · 右滑冲刺</div>
         <div class="best" id="titleBest"></div>
       </div>
 
@@ -642,6 +679,12 @@
       <div class="loadBar"><i></i></div>
     </div>
   </div>
+</div>
+
+<div id="rotate">
+  <div class="phone"></div>
+  <b>请横屏游玩</b>
+  <span>赛道是 16:9 的，竖屏只看得见中间一小条。<br>把手机横过来即可开始。</span>
 </div>
 
 <script src="src/memes.js"></script>

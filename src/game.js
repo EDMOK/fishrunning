@@ -755,6 +755,10 @@
   }
 
   function jumpHeld() {
+    // A touch is a jump held too, but fingers never land in `keys`, so the glide
+    // has to ask the pointer state as well or the verb simply does not exist on
+    // a phone.
+    if (touchJumpHeld) return true;
     for (var i = 0; i < JUMP_KEYS.length; i++) if (keys[JUMP_KEYS[i]]) return true;
     return false;
   }
@@ -1699,6 +1703,16 @@
   // ------------------------------------------------------------------ input
   var keys = {};
   var touchStart = null;
+  // A touch is not classifiable until the finger either moves past a swipe
+  // threshold or lifts, so the jump waits out TAP_DELAY before it commits. That
+  // wait is the whole point: buffering the jump on pointerdown (the old shape)
+  // launched the runner on the very frame a down-swipe began, so the swipe had
+  // nothing left to do and a ground slide was unreachable on a phone. The cost
+  // is a held jump starting one delay late, so the thresholds below are sized to
+  // be crossed by an ordinary flick well inside the window.
+  var TAP_DELAY = 80, SWIPE_DOWN = 30, SWIPE_RIGHT = 56;
+  // Fingers hold the jump open for the glide without ever touching `keys`.
+  var touchJumpHeld = false;
 
   function jumpPressed() {
     if (game.state === 'title') { startRun(); return; }
@@ -1735,18 +1749,23 @@
     }
   }
 
+  /**
+   * Tapping trims the FIRST jump only, and gently. Cutting the second jump was a
+   * large part of why double jumping felt like it always hit something: the arc
+   * died mid-rise and dropped the player onto the thing they were clearing. The
+   * second jump now always completes. Shared with the touch release so a finger
+   * lift trims the jump exactly like a key does.
+   */
+  function cutJump() {
+    if (player.cuttable && player.vy < 0) {
+      player.vy *= 0.85;
+      player.cuttable = false;
+    }
+  }
+
   function onKeyUp(e) {
     var k = e.code;
-    if (keys[k] && JUMP_KEYS.indexOf(k) >= 0) {
-      // Tapping trims the FIRST jump only, and gently. Cutting the second jump was
-      // a large part of why double jumping felt like it always hit something: the
-      // arc died mid-rise and dropped the player onto the thing they were
-      // clearing. The second jump now always completes.
-      if (player.cuttable && player.vy < 0) {
-        player.vy *= 0.85;
-        player.cuttable = false;
-      }
-    }
+    if (keys[k] && JUMP_KEYS.indexOf(k) >= 0) cutJump();
     keys[k] = false;
   }
 
@@ -1755,46 +1774,74 @@
   function bindInput() {
     window.addEventListener('keydown', onKeyDown, { passive: false });
     window.addEventListener('keyup', onKeyUp);
-    window.addEventListener('blur', function () { keys = {}; if (game.state === 'playing') setPause(true); });
+    window.addEventListener('blur', function () {
+      keys = {}; endTouch();
+      if (game.state === 'playing') setPause(true);
+    });
 
     var stage = document.getElementById('stage');
+
+    /** Forget the finger in flight, whatever it was about to do. */
+    function endTouch() {
+      if (touchStart) { clearTimeout(touchStart.timer); touchStart = null; }
+      touchJumpHeld = false;
+    }
+
     stage.addEventListener('pointerdown', function (e) {
       if (e.target.closest && e.target.closest('button')) return;
+      // Extra fingers are ignored rather than allowed to steal the gesture state
+      // from the one already tracking a swipe.
+      if (touchStart) return;
       GameAudio.unlock();
-      touchStart = { x: e.clientX, y: e.clientY, t: performance.now(), slid: false };
-      if (game.state === 'playing') player.buffer = JUMP_BUFFER;
+      touchStart = {
+        id: e.pointerId, x: e.clientX, y: e.clientY,
+        t: performance.now(), slid: false, jumped: false, timer: 0
+      };
+      touchStart.timer = setTimeout(function () {
+        if (!touchStart || touchStart.slid || touchStart.jumped) return;
+        touchStart.jumped = true;
+        touchJumpHeld = true;      // stays held for the glide until the finger lifts
+        jumpPressed();
+      }, TAP_DELAY);
     });
     // `slid` means "a gesture has already consumed this touch", whichever
-    // direction it went: both swipes must suppress the tap-to-jump that fires on
-    // pointerup, or every swipe would also queue a jump. Recognising a swipe also
-    // DROPS the jump that pointerdown already buffered — the finger had not moved
-    // yet when that was queued, so it was a guess this supersedes. Deferring the
-    // jump to pointerup instead would fix it more thoroughly but makes every
-    // tap-to-jump fire on release, which reads as lag.
+    // direction it went: both swipes must suppress the tap-to-jump, or every
+    // swipe would also queue a jump. The delays also end the tap's hold, so a
+    // swipe can never glide.
     stage.addEventListener('pointermove', function (e) {
-      if (!touchStart || touchStart.slid) return;
-      if (e.clientY - touchStart.y > 46) {
+      if (!touchStart || e.pointerId !== touchStart.id || touchStart.slid) return;
+      if (e.clientY - touchStart.y > SWIPE_DOWN) {
         touchStart.slid = true;
-        player.buffer = 0;
+        endTouch();
         keys['ArrowDown'] = true;
         setTimeout(function () { keys['ArrowDown'] = false; }, 520);
-      } else if (e.clientX - touchStart.x > 64) {
+      } else if (e.clientX - touchStart.x > SWIPE_RIGHT) {
         touchStart.slid = true;
-        player.buffer = 0;
+        endTouch();
         tryDash();
       }
     });
     stage.addEventListener('pointerup', function (e) {
-      if (!touchStart) return;
+      if (!touchStart || e.pointerId !== touchStart.id) return;
       var wasSlide = touchStart.slid;
+      var jumped = touchStart.jumped;
       var quick = performance.now() - touchStart.t < 260;
-      touchStart = null;
+      endTouch();
       if (game.state === 'title') { startRun(); return; }
       if (game.state === 'over') { if (game.overFade > 0.5) restart(); return; }
       // same guard as jumpPressed: no queued jump out of a modal
-      if (game.state === 'playing' && !wasSlide && quick) player.buffer = JUMP_BUFFER;
+      if (game.state !== 'playing' || wasSlide) return;
+      // A tap shorter than TAP_DELAY never reached the timer, so it fires here —
+      // with no hold behind it, which makes it a plain full-height hop rather
+      // than the trimmed one a keyboard tap gets. One that did reach the timer
+      // has already jumped and must not jump again; the lift only cuts it.
+      if (!jumped && quick) jumpPressed();
+      else cutJump();
     });
-    stage.addEventListener('pointercancel', function () { touchStart = null; });
+    stage.addEventListener('pointercancel', function (e) {
+      if (touchStart && e.pointerId !== touchStart.id) return;
+      endTouch();
+    });
   }
 
   // ------------------------------------------------------------ game control
@@ -2701,6 +2748,13 @@
     var k = Math.min((window.innerWidth - pad) / VW, (window.innerHeight - pad) / VH);
     stage.style.transform = 'scale(' + k + ')';
     void stage.offsetWidth;
+    // The rotate card covers the whole cabinet on a portrait phone, and a run
+    // left going behind it would just kill the player for turning their wrist.
+    // #rotate decides whether that card is up (the breakpoint lives in its media
+    // query); this only observes. Landscape puts the card away but leaves the
+    // run paused, so the player resumes on purpose.
+    var rot = document.getElementById('rotate');
+    if (rot && window.getComputedStyle(rot).display !== 'none') setPause(true);
   }
 
   function setupCanvas() {
