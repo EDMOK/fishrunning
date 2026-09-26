@@ -357,10 +357,19 @@
 
   /* ======================================================== game over ====== */
   #cardOver{padding-top:14px;padding-bottom:14px}
+  /* The ribbon art is 1200x375 and its inner navy field (where the title belongs)
+     runs rows 153-230, centred at 0.51 of the height. The title card seats its
+     heading so the text centre lands on row ~205 of the art, which reads as
+     centred; this card used to be bottom-aligned with padding instead, putting
+     the text centre on row ~267 — below the field's lower edge, so the heading
+     straddled the gold border. Same art, same rule: centre the text and hand it
+     the same small downward offset the title card's h1 gets (16px in a 176px
+     box scales to 14px in this 150px one). */
   .goHead{position:relative;width:540px;height:150px;display:flex;flex-direction:column;
-    align-items:center;justify-content:flex-end;padding-bottom:24px}
+    align-items:center;justify-content:center}
   .goHead .marquee{opacity:.98}
-  .goHeadTxt{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .goHeadTxt{position:relative;z-index:1;display:flex;flex-direction:column;
+    align-items:center;gap:2px;margin-top:14px}
   #goTitle{
     font-size:38px;line-height:1;letter-spacing:.08em;color:var(--gold);
     text-shadow:0 0 24px rgba(255,170,40,.7),0 4px 0 #7a4300,0 6px 0 rgba(4,16,31,.45);
