@@ -6,11 +6,18 @@
 assets/raw/
 image_形象/
 
+# Claude Code 的权限白名单，因机器而异
+.claude/settings.local.json
+
 # ------------------------------------------------------------ 开发期生成物
 # tools/preview.py、contact_sheet.py 等生成的对照图，可随时重新生成
 preview/
 tools/__pycache__/
 *.pyc
+
+# tools/make_dist.py 生成的发布目录与打包压缩包，随时可重新生成，不进版本库
+dist/
+dist.zip
 
 # ------------------------------------------------------------ 编辑器备份
 *.bak
