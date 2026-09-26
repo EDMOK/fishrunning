@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>DeepSeek 娘 · 白饭大冲刺</title>
+<meta name="theme-color" content="#050a16">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=M+PLUS+Rounded+1c:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* --- surface --- */
+    --ink:#04101f;
+    --navy:#0a1730;
+    --navy-2:#122b52;
+    --navy-3:#1c3f74;
+    /* --- accents --- */
+    --cyan:#62e8ff;
+    --cyan-2:#bef6ff;
+    --cyan-dim:#2ea8c9;
+    --gold:#ffd166;
+    --gold-2:#fff1c9;
+    --pink:#ff7bc0;
+    --mint:#8affc1;
+    /* --- type --- */
+    --text:#eaf6ff;
+    --muted:#a4cbe6;
+    --faint:#7ba0bf;
+    /* --- lines & plates --- */
+    --line:rgba(98,232,255,.44);
+    --line-soft:rgba(98,232,255,.2);
+    --plate-a:rgba(22,52,98,.88);
+    --plate-b:rgba(5,14,32,.93);
+    --pop:0 4px 0 rgba(4,16,31,.85);
+    --pop-lg:0 6px 0 rgba(4,16,31,.85);
+    --glow:0 0 26px rgba(98,232,255,.35);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;background:#04101f}
+  body{
+    font-family:"M PLUS Rounded 1c","Baloo 2","PingFang SC","Yuanti SC","Microsoft YaHei UI",
+                "Hiragino Maru Gothic ProN",system-ui,sans-serif;
+    color:var(--text);
+    user-select:none;
+    touch-action:none;
+  }
+  button{font-family:inherit}
+
+  /* ============================================================ cabinet ==== */
+  #fit{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 36%,#0e2145 0%,#050a16 70%);
+  }
+  #fit::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:url("assets/ui/pattern_ai.png") center/340px repeat;
+    opacity:.16;
+  }
+  #stage{
+    position:relative;width:1280px;height:720px;
+    transform-origin:center center;
+    border-radius:20px;overflow:hidden;
+    box-shadow:0 0 0 2px rgba(98,232,255,.28),0 0 70px rgba(28,110,210,.28),0 28px 80px rgba(0,0,0,.78);
+  }
+  canvas{display:block;width:1280px;height:720px}
+  /* CRT scanlines + vignette, kept under the HUD so text stays crisp */
+  #stage::after{
+    content:"";position:absolute;inset:0;z-index:1;pointer-events:none;border-radius:20px;
+    background:
+      repeating-linear-gradient(180deg,rgba(0,4,12,.07) 0 1px,transparent 1px 4px),
+      radial-gradient(ellipse at 50% 46%,transparent 60%,rgba(2,8,18,.4) 100%);
+  }
+
+  /* ============================================================== panel ==== */
+  .panel{
+    position:relative;
+    background:linear-gradient(180deg,var(--plate-a),var(--plate-b));
+    border:2px solid var(--line);
+    border-radius:16px;
+    backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+    box-shadow:var(--pop),0 10px 26px rgba(0,0,0,.42),
+               inset 0 1px 0 rgba(255,255,255,.18),
+               inset 0 -12px 20px rgba(0,0,0,.24);
+  }
+  .panel::before{
+    content:"";position:absolute;left:12px;right:12px;top:3px;height:2px;border-radius:2px;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);
+    pointer-events:none;
+  }
+
+  /* ================================================================ HUD ==== */
+  #hud{position:absolute;inset:0;z-index:2;pointer-events:none;font-weight:800}
+
+  #topleft{position:absolute;left:20px;top:18px;padding:9px 20px 11px;display:flex;align-items:center;gap:20px}
+  #scoreWrap{display:flex;flex-direction:column;line-height:1}
+  #scoreLabel{
+    display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.22em;
+    color:var(--cyan);opacity:.9;margin-bottom:5px;
+  }
+  #scoreLabel img{width:14px;height:14px;opacity:.95}
+  #score{
+    font-size:40px;color:#fff;line-height:1;font-variant-numeric:tabular-nums;
+    text-shadow:0 0 16px rgba(98,232,255,.8),0 2px 0 rgba(4,16,31,.55);
+  }
+  #riceWrap{display:flex;align-items:center;gap:10px;padding-left:18px;border-left:2px solid rgba(98,232,255,.22)}
+  #riceIcon{width:38px;height:38px;filter:drop-shadow(0 0 9px rgba(255,209,102,.6))}
+  #riceCount{
+    font-size:27px;line-height:1;color:var(--gold);font-variant-numeric:tabular-nums;
+    text-shadow:0 0 13px rgba(255,209,102,.65),0 2px 0 rgba(4,16,31,.5);
+  }
+  #riceCount.pop{animation:pop .26s ease-out}
+  @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.34)}100%{transform:scale(1)}}
+
+  #topright{position:absolute;right:20px;top:18px;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  #livesRow{display:flex;gap:8px;padding:9px 15px}
+  .life{width:34px;height:34px;transition:transform .2s,opacity .3s,filter .3s;
+    filter:drop-shadow(0 2px 0 rgba(4,16,31,.6))}
+  .life.lost{opacity:.2;filter:grayscale(1) brightness(.65);transform:scale(.74)}
+
+  #btns{display:flex;gap:9px;pointer-events:auto}
+  .btn{
+    height:48px;min-width:48px;padding:0;border-radius:14px;border:2px solid var(--line);
+    background:linear-gradient(180deg,var(--plate-a),var(--plate-b));color:var(--cyan);
+    cursor:pointer;font-weight:800;
+    display:flex;align-items:center;justify-content:center;gap:9px;
+    backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+    box-shadow:var(--pop-sm,0 3px 0 rgba(4,16,31,.8)),inset 0 1px 0 rgba(255,255,255,.16);
+    transition:transform .12s,box-shadow .12s,filter .18s,border-color .18s;
+  }
+  .btn img{width:26px;height:26px;object-fit:contain;pointer-events:none}
+  .btn:hover{transform:translateY(-2px);border-color:rgba(152,240,255,.75);filter:brightness(1.12)}
+  .btn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(4,16,31,.8),inset 0 1px 0 rgba(255,255,255,.12)}
+  .btn.off{color:var(--faint);border-color:rgba(92,115,145,.42);filter:saturate(.45) brightness(.9)}
+  #btnShop{width:auto;padding:0 16px 0 11px;font-size:16px;letter-spacing:.06em}
+  .btnTip{font-size:16px}
+
+  /* In the flow of #topright, NOT absolutely positioned: the column above it
+     grows and shrinks with the dash charges and the life count, and anything
+     pinned to a fixed top ends up drawn over the buttons. */
+  #powerups{display:flex;flex-direction:column;gap:9px;align-items:flex-end}
+  .pw{display:flex;align-items:center;gap:11px;padding:8px 15px 8px 9px;min-width:186px}
+  .pw img{width:34px;height:34px;object-fit:contain;filter:drop-shadow(0 2px 0 rgba(4,16,31,.55))}
+  .pw .bar{position:relative;flex:1;height:11px;border-radius:6px;background:rgba(255,255,255,.15);
+    overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.45)}
+  .pw .bar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--cyan),#d9faff);
+    box-shadow:0 0 10px rgba(98,232,255,.65);transition:width .1s linear}
+  .pw.chip .bar i{background:linear-gradient(90deg,#ffc74d,#ffeab5);
+    box-shadow:0 0 10px rgba(255,199,77,.7)}
+  .pw.magnet .bar i{background:linear-gradient(90deg,#ff9ad2,#ffe3f4);
+    box-shadow:0 0 10px rgba(255,154,210,.7)}
+  .pw.shield .bar i{background:linear-gradient(90deg,var(--mint),#eafff3);
+    box-shadow:0 0 10px rgba(138,255,193,.7)}
+  /* The caption sits on top of the bar and is filled from POWER_INFO, so adding
+     a powerup is a content edit rather than a matching CSS rule here. */
+  .pw .bar span{
+    position:absolute;left:8px;top:-1px;height:11px;line-height:11px;
+    font-size:9px;letter-spacing:.1em;color:#04101f;opacity:.72;white-space:nowrap;
+  }
+  .pw.overclock .bar i{background:linear-gradient(90deg,#ffd166,#fff2c8);
+    box-shadow:0 0 10px rgba(255,209,102,.75)}
+
+  /* Dash charges live in their own panel: #powerups is rebuilt whenever the
+     active powerups change, and would wipe anything nested inside it. */
+  #dashHud{display:flex;align-items:center;gap:9px;padding:6px 13px 6px 10px}
+  .dhTag{font-size:11px;letter-spacing:.14em;color:var(--cyan);opacity:.85}
+  #dashPips{display:flex;gap:5px}
+  #dashPips i{
+    width:13px;height:13px;border-radius:4px;
+    background:linear-gradient(180deg,#c8ffe4,var(--mint));
+    box-shadow:0 0 9px rgba(138,255,193,.8),inset 0 1px 0 rgba(255,255,255,.5);
+  }
+  #dashPips i.spent{background:rgba(255,255,255,.14);box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+  #dashCd{
+    position:relative;width:0;height:8px;border-radius:4px;overflow:hidden;
+    background:rgba(255,255,255,.16);transition:width .18s;box-shadow:inset 0 1px 2px rgba(0,0,0,.45);
+  }
+  #dashCd.on{width:58px}
+  #dashCd i{display:block;height:100%;width:0;border-radius:4px;
+    background:linear-gradient(90deg,var(--mint),#eafff3);box-shadow:0 0 9px rgba(138,255,193,.7)}
+
+  #combo{
+    position:absolute;left:50%;top:12px;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;gap:1px;
+    opacity:0;transition:opacity .18s;
+  }
+  #combo.on{opacity:1}
+  #comboNum{
+    font-size:44px;line-height:1;color:var(--gold);font-variant-numeric:tabular-nums;
+    text-shadow:0 0 20px rgba(255,180,60,.95),0 3px 0 #96540a,0 5px 0 rgba(4,16,31,.5);
+  }
+  #comboNum.hit{animation:cpop .3s cubic-bezier(.34,1.7,.5,1)}
+  @keyframes cpop{0%{transform:scale(1)}50%{transform:scale(1.45) rotate(-3deg)}100%{transform:scale(1)}}
+  #comboTxt{
+    font-size:13px;letter-spacing:.28em;color:var(--gold-2);
+    text-shadow:0 0 10px rgba(255,180,60,.75),0 2px 0 rgba(4,16,31,.6);
+  }
+  #comboRing{
+    position:absolute;top:0;left:50%;width:104px;height:104px;margin-left:-52px;
+    border-radius:50%;border:4px solid rgba(255,209,102,.6);opacity:0;
+    transform-origin:center center;pointer-events:none;
+    box-shadow:0 0 24px rgba(255,190,70,.45),inset 0 0 24px rgba(255,190,70,.24);
+  }
+
+  #dashFx{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;
+    background:radial-gradient(ellipse at 32% 62%,rgba(255,255,255,.2),transparent 62%)}
+
+  /* ============================================================ overlays ==== */
+  #overlay{
+    position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at 50% 45%,rgba(10,26,58,.78),rgba(3,8,18,.95));
+  }
+  #overlay::before{
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:.14;
+    background:url("assets/ui/pattern_ai.png") center/300px repeat;
+  }
+  #overlay.hide{display:none}
+  .card{
+    position:relative;z-index:1;
+    display:flex;flex-direction:column;align-items:center;text-align:center;
+    padding:20px 44px;max-width:840px;
+  }
+
+  /* --- title lockup --- */
+  .logoWrap{position:relative;display:flex;align-items:center;justify-content:center;
+    width:132px;height:132px;margin-bottom:4px}
+  .logoWrap::before{
+    content:"";position:absolute;inset:-14px;border-radius:50%;
+    background:radial-gradient(circle,rgba(98,232,255,.34),transparent 68%);
+  }
+  .logoWrap::after{
+    content:"";position:absolute;inset:-9px;border-radius:50%;
+    border:2px dashed rgba(98,232,255,.32);
+    animation:spin 26s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #emblem{position:relative;width:124px;height:124px;
+    filter:drop-shadow(0 10px 24px rgba(0,0,0,.6)) drop-shadow(0 0 18px rgba(98,232,255,.4));
+    animation:float 3.4s ease-in-out infinite}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+
+  .titleWrap{position:relative;width:640px;height:176px;display:flex;align-items:center;justify-content:center}
+  .marquee{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+    filter:drop-shadow(0 8px 20px rgba(0,0,0,.5))}
+  #cardTitle h1{
+    position:relative;z-index:1;margin:16px 0 0;font-size:62px;line-height:1;letter-spacing:.04em;
+    background:linear-gradient(180deg,#ffffff 12%,#d6f7ff 42%,var(--cyan) 74%,#3f9fe8 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 3px 0 rgba(6,40,80,.9)) drop-shadow(0 0 16px rgba(60,170,255,.6));
+  }
+  .sub{margin:6px 0 0;font-size:18px;color:var(--muted);letter-spacing:.14em}
+
+  /* --- zone strip --- */
+  .zoneStrip{display:flex;align-items:center;gap:7px;margin:12px 0 0;flex-wrap:wrap;justify-content:center}
+  .zchip{
+    padding:6px 14px;border-radius:11px;font-size:13px;letter-spacing:.05em;color:#cdeaff;
+    background:linear-gradient(180deg,rgba(40,84,146,.72),rgba(10,26,52,.85));
+    border:2px solid var(--line-soft);box-shadow:0 2px 0 rgba(4,16,31,.7);
+  }
+  .zoneStrip em{font-style:normal;color:var(--cyan-dim);font-size:14px;opacity:.85}
+
+  /* --- arcade buttons --- */
+  .bigbtn{
+    display:inline-flex;align-items:center;gap:13px;margin:14px 0 0;
+    padding:13px 38px 13px 28px;border-radius:20px;cursor:pointer;
+    font-size:25px;font-weight:800;letter-spacing:.1em;color:#04223a;
+    background:linear-gradient(180deg,#a6f4ff,#46cbef 52%,#1f8fd0);
+    border:3px solid #dcfaff;
+    box-shadow:0 6px 0 #0a5c86,0 0 34px rgba(98,232,255,.5),inset 0 2px 0 rgba(255,255,255,.75),
+               inset 0 -6px 12px rgba(6,60,100,.28);
+    transition:transform .12s,box-shadow .12s,filter .18s;
+    animation:breathe 2.4s ease-in-out infinite;
+  }
+  .bigbtn img{width:32px;height:32px;object-fit:contain}
+  .bigbtn:hover{transform:translateY(-2px);filter:brightness(1.07);
+    box-shadow:0 8px 0 #0a5c86,0 0 44px rgba(98,232,255,.65),inset 0 2px 0 rgba(255,255,255,.8)}
+  .bigbtn:active{transform:translateY(4px);animation:none;
+    box-shadow:0 2px 0 #0a5c86,0 0 24px rgba(98,232,255,.45),inset 0 2px 0 rgba(255,255,255,.6)}
+  @keyframes breathe{0%,100%{box-shadow:0 6px 0 #0a5c86,0 0 30px rgba(98,232,255,.42),
+    inset 0 2px 0 rgba(255,255,255,.75),inset 0 -6px 12px rgba(6,60,100,.28)}
+    50%{box-shadow:0 6px 0 #0a5c86,0 0 48px rgba(98,232,255,.72),
+    inset 0 2px 0 rgba(255,255,255,.75),inset 0 -6px 12px rgba(6,60,100,.28)}}
+
+  .start{margin:10px 0 0;font-size:16px;color:#dff4ff;letter-spacing:.14em;
+    text-shadow:0 0 12px rgba(98,232,255,.6);animation:blink 1.7s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+  .keybar{display:flex;gap:10px;margin:12px 0 0;flex-wrap:wrap;justify-content:center}
+  .kb{
+    display:inline-flex;align-items:center;gap:7px;padding:6px 13px 6px 7px;border-radius:11px;
+    font-size:12px;color:#c2e2f6;background:rgba(10,26,52,.6);border:1px solid var(--line-soft);
+  }
+  .kb b{
+    display:inline-flex;align-items:center;justify-content:center;min-width:26px;padding:4px 8px;
+    border-radius:7px;font-size:12px;color:#fff;
+    background:linear-gradient(180deg,rgba(80,150,225,.72),rgba(20,50,100,.85));
+    border:1px solid rgba(140,225,255,.55);box-shadow:0 2px 0 rgba(4,16,31,.75);
+  }
+  .best{
+    display:flex;align-items:center;gap:9px;margin-top:12px;padding:7px 18px 7px 8px;
+    border-radius:13px;font-size:15px;color:var(--gold-2);letter-spacing:.08em;
+    background:linear-gradient(180deg,rgba(70,52,20,.55),rgba(14,20,38,.8));
+    border:2px solid rgba(255,209,102,.4);box-shadow:0 3px 0 rgba(4,16,31,.7);
+  }
+  .best img{width:24px;height:24px;object-fit:contain}
+  .best:empty{display:none}
+
+  /* ======================================================== game over ====== */
+  #cardOver{padding-top:14px;padding-bottom:14px}
+  .goHead{position:relative;width:540px;height:150px;display:flex;flex-direction:column;
+    align-items:center;justify-content:flex-end;padding-bottom:24px}
+  .goHead .marquee{opacity:.98}
+  .goHeadTxt{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+  #goTitle{
+    font-size:38px;line-height:1;letter-spacing:.08em;color:var(--gold);
+    text-shadow:0 0 24px rgba(255,170,40,.7),0 4px 0 #7a4300,0 6px 0 rgba(4,16,31,.45);
+  }
+  /* #goTitle carries a gold halo for the game-over banner; the pause card
+     reuses the id with a cyan one so the glow matches its own text. */
+  #goTitle.pauseTitle{
+    color:#8fe6ff;
+    text-shadow:0 0 24px rgba(98,232,255,.75),0 4px 0 #14526f,0 6px 0 rgba(4,16,31,.45);
+  }
+  .goSub{margin-top:7px;font-size:13px;color:var(--muted);letter-spacing:.06em}
+
+  .goScore{display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:8px}
+  .goScoreLabel{font-size:11px;letter-spacing:.26em;color:var(--cyan);opacity:.9}
+  .goScoreNum{
+    font-size:50px;line-height:1;color:#fff;font-variant-numeric:tabular-nums;
+    text-shadow:0 0 26px rgba(98,232,255,.8),0 4px 0 rgba(4,16,31,.5);
+  }
+
+  #goStats{display:grid;grid-template-columns:repeat(2,minmax(196px,1fr));gap:8px 16px;margin:14px 0 0}
+  .stat{
+    display:flex;justify-content:space-between;align-items:center;gap:16px;
+    padding:9px 17px;border-radius:13px;font-size:16px;color:var(--muted);
+    background:linear-gradient(180deg,rgba(34,72,126,.62),rgba(9,22,44,.8));
+    border:2px solid var(--line-soft);box-shadow:0 3px 0 rgba(4,16,31,.7);
+  }
+  /* The label keeps its width; the value is what wraps when a stat is long. */
+  .stat span{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+  .statIco{width:21px;height:21px;object-fit:contain;flex:0 0 auto}
+  .stat b{color:var(--cyan);font-size:18px;font-variant-numeric:tabular-nums;
+    text-shadow:0 0 10px rgba(98,232,255,.4)}
+  .stat.hi{border-color:rgba(255,209,102,.5)}
+  .stat.hi b{color:var(--gold);text-shadow:0 0 10px rgba(255,209,102,.45)}
+  .stat.wide{grid-column:1/-1}
+  .stat.wide b{font-size:15px}
+
+  #newBest{
+    display:flex;align-items:center;gap:12px;margin-top:12px;padding:8px 26px 8px 10px;
+    border-radius:15px;font-size:22px;letter-spacing:.12em;color:#fff;
+    background:linear-gradient(180deg,rgba(255,120,190,.42),rgba(60,20,60,.75));
+    border:2px solid rgba(255,154,210,.75);
+    box-shadow:0 4px 0 rgba(4,16,31,.8),0 0 30px rgba(255,120,190,.55);
+    text-shadow:0 0 16px rgba(255,120,190,.9);
+    animation:pop .5s ease-out;
+  }
+  #newBest img{width:36px;height:36px;object-fit:contain}
+  #newBest.hide{display:none}
+
+  .row{display:flex;gap:14px;margin-top:18px;flex-wrap:wrap;justify-content:center}
+  .legbtn{
+    pointer-events:auto;display:inline-flex;align-items:center;gap:11px;
+    padding:13px 30px;border-radius:16px;font-size:19px;font-weight:800;cursor:pointer;
+    border:3px solid rgba(140,225,255,.55);color:var(--text);letter-spacing:.06em;
+    background:linear-gradient(180deg,rgba(52,104,176,.78),rgba(14,38,76,.9));
+    box-shadow:0 5px 0 rgba(4,16,31,.85),inset 0 1px 0 rgba(255,255,255,.18);
+    transition:transform .12s,box-shadow .12s,filter .18s;
+  }
+  .legbtn img{width:26px;height:26px;object-fit:contain}
+  .legbtn:hover{transform:translateY(-2px);filter:brightness(1.12)}
+  .legbtn:active{transform:translateY(3px);
+    box-shadow:0 1px 0 rgba(4,16,31,.85),inset 0 1px 0 rgba(255,255,255,.12)}
+  .legbtn.primary{
+    color:#04223a;border-color:#dcfaff;
+    background:linear-gradient(180deg,#a6f4ff,#46cbef 52%,#1f8fd0);
+    box-shadow:0 5px 0 #0a5c86,0 0 30px rgba(98,232,255,.5),inset 0 2px 0 rgba(255,255,255,.7);
+  }
+  .legbtn.primary:hover{box-shadow:0 7px 0 #0a5c86,0 0 42px rgba(98,232,255,.65),
+    inset 0 2px 0 rgba(255,255,255,.75)}
+  .legbtn.primary:active{box-shadow:0 1px 0 #0a5c86,inset 0 2px 0 rgba(255,255,255,.55)}
+
+  /* ============================================================= loading === */
+  #loading{
+    position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;
+    flex-direction:column;gap:18px;background:#06101f;font-size:16px;color:var(--muted);
+  }
+  #loading.hide{display:none}
+  #loading .loadTitle{font-size:20px;color:var(--cyan);letter-spacing:.2em;font-weight:800}
+  .loadBar{width:260px;height:9px;border-radius:5px;background:rgba(255,255,255,.13);overflow:hidden;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
+  .loadBar i{display:block;width:42%;height:100%;border-radius:5px;
+    background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+    animation:slide 1.15s ease-in-out infinite}
+  @keyframes slide{0%{transform:translateX(-110%)}100%{transform:translateX(340%)}}
+  .spin{width:44px;height:44px;border-radius:50%;border:4px solid rgba(98,232,255,.22);
+    border-top-color:var(--cyan);animation:sp .9s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* ======================================================== zone plaque ==== */
+  #zonePlaque{
+    position:absolute;left:20px;top:112px;padding:8px 16px 9px;display:flex;
+    align-items:baseline;gap:10px;transition:box-shadow .4s,border-color .4s;
+  }
+  #zoneTag{font-size:10px;letter-spacing:.22em;color:var(--cyan-dim);opacity:.95}
+  #zoneName{font-size:20px;color:var(--text);letter-spacing:.06em;
+    text-shadow:0 0 12px rgba(98,232,255,.4)}
+  #zoneRule{font-size:12px;color:var(--gold);font-style:normal;opacity:.95}
+  #zoneGoal{
+    font-size:11px;color:#cdf6ff;margin-left:4px;padding-left:9px;
+    border-left:1px solid rgba(98,232,255,.32);
+  }
+  #zonePlaque.banner{
+    border-color:rgba(255,209,102,.9);
+    box-shadow:0 4px 0 rgba(4,16,31,.85),0 0 30px rgba(255,209,102,.5),
+               inset 0 1px 0 rgba(255,255,255,.2);
+  }
+
+  /* ====================================================== event banner ===== */
+  /* Sits below the combo readout and stays narrow enough that it never
+     creeps over the zone plaque on the left. */
+  #eventBanner{
+    position:absolute;left:50%;top:74px;transform:translate(-50%,-26px);
+    display:flex;align-items:center;gap:14px;padding:12px 24px 12px 12px;
+    max-width:540px;opacity:0;pointer-events:none;
+    transition:opacity .28s,transform .28s;
+  }
+  #eventBanner.on{opacity:1;transform:translate(-50%,0)}
+  #eventBanner.reward{border-color:rgba(255,209,102,.9);box-shadow:var(--pop),0 0 28px rgba(255,209,102,.3)}
+  #eventBanner.hazard{border-color:rgba(255,123,192,.9);box-shadow:var(--pop),0 0 28px rgba(255,123,192,.3)}
+  #eventBanner.shop{border-color:rgba(138,255,193,.9);box-shadow:var(--pop),0 0 28px rgba(138,255,193,.26)}
+  #eventBanner.mood{border-color:rgba(98,232,255,.75);box-shadow:var(--pop),0 0 28px rgba(98,232,255,.24)}
+  #evFace{width:68px;height:68px;object-fit:contain;flex:0 0 auto;
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,.55))}
+  #evBody{display:flex;flex-direction:column;gap:3px;min-width:0}
+  #evTitle{font-size:20px;color:#fff;letter-spacing:.03em;text-shadow:0 2px 0 rgba(4,16,31,.5)}
+  #evText{font-size:13px;color:var(--muted);font-weight:600;line-height:1.35}
+  #evCue{font-size:12px;color:var(--gold-2);letter-spacing:.05em}
+  #evTimer{margin-top:5px;height:5px;border-radius:3px;background:rgba(255,255,255,.16);overflow:hidden}
+  #evTimer i{display:block;height:100%;width:100%;border-radius:3px;
+    background:linear-gradient(90deg,var(--gold),var(--gold-2))}
+
+  /* =============================================================== shop ==== */
+  /* Bottom-right on purpose: the whole right edge above it is a live column
+     (hearts, dash, buttons, running powerups) whose height changes during a run,
+     so any fixed top would eventually be drawn over. */
+  #shopNotice{
+    position:absolute;right:20px;bottom:18px;padding:9px 16px;color:var(--gold);
+    font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;
+  }
+  #shopNotice.on{opacity:1}
+
+  #shopPanel{
+    position:absolute;inset:0;z-index:7;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:16px;pointer-events:auto;padding:28px;
+    background:radial-gradient(ellipse at center,rgba(8,22,48,.9),rgba(3,8,18,.98));
+  }
+  #shopPanel::before{
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:.13;
+    background:url("assets/ui/pattern_ai.png") center/300px repeat;
+  }
+  #shopPanel.hide{display:none}
+  #shopPanel > *{position:relative;z-index:1}
+  #shopPanel h2{
+    display:flex;align-items:center;gap:12px;margin:0;font-size:31px;color:var(--cyan);
+    letter-spacing:.1em;text-shadow:0 0 22px rgba(98,232,255,.55),0 3px 0 rgba(4,16,31,.5);
+  }
+  #shopPanel h2 img{flex:0 0 auto;width:40px;height:40px;object-fit:contain}
+  #shopBalance{
+    padding:7px 20px;border-radius:12px;font-size:15px;color:var(--gold-2);
+    background:linear-gradient(180deg,rgba(70,52,20,.5),rgba(14,20,38,.8));
+    border:2px solid rgba(255,209,102,.4);box-shadow:0 3px 0 rgba(4,16,31,.7);
+  }
+  #shopList{
+    display:grid;grid-template-columns:repeat(3,288px);gap:12px;
+    max-height:min(560px,72vh);overflow-y:auto;padding:4px 8px 6px;
+    scrollbar-width:thin;scrollbar-color:rgba(150,238,255,.5) transparent;
+  }
+  #shopList::-webkit-scrollbar{width:9px}
+  #shopList::-webkit-scrollbar-thumb{border-radius:5px;background:rgba(150,238,255,.42)}
+  .shopItem{
+    display:flex;flex-direction:column;gap:6px;padding:12px 13px 11px;
+    font:inherit;font-weight:800;color:var(--text);cursor:pointer;text-align:left;
+    background:linear-gradient(180deg,rgba(38,80,140,.95),rgba(12,32,64,.97));
+    border:2px solid var(--line);border-radius:16px;
+    box-shadow:0 4px 0 rgba(4,16,31,.85),inset 0 1px 0 rgba(255,255,255,.16);
+    transition:transform .12s,box-shadow .12s,filter .18s,border-color .18s;
+  }
+  .shopItem:hover:not(:disabled){transform:translateY(-2px);border-color:rgba(150,238,255,.85);
+    filter:brightness(1.08)}
+  .shopItem:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 rgba(4,16,31,.85)}
+  .shopItem:disabled{opacity:.46;cursor:not-allowed;filter:saturate(.5)}
+  .shopItem.sale{border-color:var(--gold);box-shadow:0 4px 0 rgba(4,16,31,.85),
+    0 0 24px rgba(255,209,102,.4),inset 0 1px 0 rgba(255,255,255,.18)}
+  .siHead{display:flex;align-items:center;gap:9px}
+  .siHead img{width:34px;height:34px;object-fit:contain;flex:0 0 auto;
+    filter:drop-shadow(0 2px 0 rgba(4,16,31,.6))}
+  .siName{flex:1;font-size:15.5px;letter-spacing:.02em;min-width:0}
+  .siPips{display:flex;gap:4px;flex:0 0 auto}
+  .siPips i{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.16);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+  .siPips i.on{background:linear-gradient(180deg,var(--gold-2),var(--gold));
+    box-shadow:0 0 9px rgba(255,209,102,.8)}
+  .shopItem small{color:var(--muted);font-size:11.5px;font-weight:600;line-height:1.32;min-height:31px}
+  .siFoot{display:flex;align-items:center;gap:8px;margin-top:1px}
+  .shopItem strong{
+    padding:4px 12px;border-radius:9px;font-size:13px;color:#3a2500;
+    background:linear-gradient(180deg,var(--gold-2),var(--gold));
+    box-shadow:0 2px 0 rgba(4,16,31,.6);
+  }
+  .shopItem:disabled strong{background:rgba(255,255,255,.14);color:var(--faint);box-shadow:none}
+  /* Category chip: with nine cards the board needs to be scannable by role. */
+  .siTag{
+    margin-left:auto;padding:3px 9px;border-radius:7px;font-size:10.5px;letter-spacing:.08em;
+    border:1px solid currentColor;opacity:.9;
+  }
+  .siTag.mob{color:var(--cyan)}
+  .siTag.eco{color:var(--gold-2)}
+  .siTag.up{color:#ff9ad2}
+
+  /* ============================================================= helpers === */
+  #stage.selecting canvas{filter:saturate(.32) brightness(.5);transition:filter .25s}
+
+  :focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important}
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="stage">
+    <canvas id="cv" width="1280" height="720"></canvas>
+
+    <div id="hud">
+      <div id="dashFx"></div>
+      <div id="topleft" class="panel">
+        <div id="scoreWrap">
+          <div id="scoreLabel"><img src="assets/ui/badge_chip.png" alt="">SCORE</div>
+          <div id="score">0</div>
+        </div>
+        <div id="riceWrap">
+          <img id="riceIcon" alt="白饭">
+          <div id="riceCount">0</div>
+        </div>
+      </div>
+
+      <div id="topright">
+        <div id="livesRow" class="panel"></div>
+        <div id="dashHud" class="panel">
+          <span class="dhTag">冲刺</span>
+          <div id="dashPips"></div>
+          <div id="dashCd"><i id="dashCdBar"></i></div>
+        </div>
+        <div id="btns">
+          <button class="btn" id="btnShop" title="技能商店"><img src="assets/ui/icon_shop.png" alt=""><span class="btnTip">商店</span></button>
+          <button class="btn" id="btnSound" title="音效开关 (M)"><img id="soundIcon" src="assets/ui/icon_sound.png" alt=""></button>
+          <button class="btn" id="btnPause" title="暂停 (P)"><img src="assets/ui/icon_pause.png" alt=""></button>
+        </div>
+        <div id="powerups"></div>
+      </div>
+
+      <div id="shopNotice" class="panel"></div>
+
+      <div id="combo">
+        <div id="comboRing"></div>
+        <div id="comboNum">x1</div>
+        <div id="comboTxt">白饭连击</div>
+      </div>
+    </div>
+
+    <div id="overlay">
+      <div class="card" id="cardTitle">
+        <div class="logoWrap"><img id="emblem" alt=""></div>
+        <div class="titleWrap">
+          <img class="marquee" src="assets/ui/marquee.png" alt="">
+          <h1>白饭大冲刺</h1>
+        </div>
+        <div class="sub">DeepSeek 娘 · 无限跑酷</div>
+
+        <div class="zoneStrip">
+          <span class="zchip">语料海</span><em>›</em>
+          <span class="zchip">榜单擂台</span><em>›</em>
+          <span class="zchip">开源市集</span><em>›</em>
+          <span class="zchip">算力金库</span><em>›</em>
+          <span class="zchip">合规边境</span>
+        </div>
+
+        <button class="bigbtn" id="btnStart"><img src="assets/ui/icon_play.png" alt="">开始游戏</button>
+        <div class="start">按 空格 / Enter 开始</div>
+
+        <div class="keybar">
+          <span class="kb"><b>空格</b>跳跃 · 二段跳</span>
+          <span class="kb"><b>↓</b>滑铲 / 空中下砸</span>
+          <span class="kb"><b>Shift</b>冲刺</span>
+          <span class="kb"><b>长按空格</b>滑翔</span>
+          <span class="kb"><b>P</b>暂停</span>
+          <span class="kb"><b>M</b>静音</span>
+        </div>
+        <div class="start">手机：点按跳跃 · 下滑滑铲 · 右滑冲刺 · 按住滑翔</div>
+        <div class="best" id="titleBest"></div>
+      </div>
+
+      <div class="card hide" id="cardOver" style="display:none">
+        <div class="goHead">
+          <img class="marquee" src="assets/ui/marquee.png" alt="">
+          <div class="goHeadTxt">
+            <div id="goTitle">绊倒了！</div>
+          </div>
+        </div>
+        <div class="goSub">鲸鱼娘被 Bug 拦住了去路</div>
+
+        <div class="goScore">
+          <div class="goScoreLabel">本局总分</div>
+          <div id="sScore" class="goScoreNum">0</div>
+        </div>
+
+        <div id="goStats">
+          <div class="stat"><span>白饭</span><b id="sRice">0</b></div>
+          <div class="stat"><span>距离</span><b id="sDist">0</b></div>
+          <div class="stat"><span>最高连击</span><b id="sCombo">0</b></div>
+          <div class="stat"><span>到达分区</span><b id="sZone">—</b></div>
+          <div class="stat"><span>完成分区目标</span><b id="sGoals">0</b></div>
+          <div class="stat"><span>本局技能</span><b id="sCards">无</b></div>
+          <div class="stat hi wide"><span><img class="statIco" src="assets/ui/badge_trophy.png" alt="">历史最佳</span><b id="sBest">0</b></div>
+        </div>
+
+        <div id="newBest" class="hide"><img src="assets/ui/badge_trophy.png" alt="">新纪录！</div>
+
+        <div class="row">
+          <button class="legbtn primary" id="btnAgain"><img src="assets/ui/icon_restart.png" alt="">再跑一次</button>
+          <button class="legbtn" id="btnHome"><img src="assets/ui/icon_home.png" alt="">回到标题</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="loading">
+      <img id="loadEmblem" src="assets/ui/emblem.png" alt="" style="width:88px;height:88px;filter:drop-shadow(0 6px 16px rgba(0,0,0,.6))">
+      <div class="loadTitle">正在加载素材</div>
+      <div class="loadBar"><i></i></div>
+    </div>
+  </div>
+</div>
+
+<script src="src/memes.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/game.js"></script>
+</body>
+</html>
