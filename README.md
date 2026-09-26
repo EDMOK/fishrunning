@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/ui/emblem.png" alt="白饭大冲刺徽章" width="180" />
+  <img src="docs/images/title.webp" alt="白饭大冲刺标题界面" width="640" />
 
   # 白饭大冲刺
 
@@ -23,6 +23,12 @@
 游戏没有后端、账号或联网接口，最高分保存在浏览器本地。
 
 ## 功能
+
+<div align="center">
+  <img src="docs/images/gameplay.webp" alt="游戏中的奔跑画面" width="720" />
+  <br />
+  <sub>奔跑中的 DeepSeek 娘、HUD 面板与沿途白饭</sub>
+</div>
 
 <table>
   <tr>
