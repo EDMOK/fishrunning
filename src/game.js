@@ -6,6 +6,7 @@
 
   // ---------------------------------------------------------------- constants
   var VW = 1280, VH = 720;
+  var mobileRender = window.matchMedia('(pointer:coarse)').matches;
   var GROUND_Y = 600;          // world y of the walkable surface
   var PLAYER_X = 300;          // screen x the heroine is pinned to
 
@@ -63,6 +64,13 @@
   var INVULN = 2.2;
   var START_LIVES = 3;
 
+  // Collection reach. A pickup is taken when the circle around the runner's
+  // centre overlaps the pickup's own radius plus this much slack, so these are
+  // "how close you have to get", not art sizes — the sprite sizes come from
+  // addRice/addPower. Kept a touch generous on purpose: the runner is moving at
+  // up to 665px/s, and a graze that visibly touches the bowl should count.
+  var RICE_REACH = 46, POWER_REACH = 44;
+
   // Hero sprites. `g` is where the notional foot line sits inside the image;
   // airborne poses have the legs tucked, so their bbox bottom is not the feet.
   var HERO_FRAMES = {
@@ -72,15 +80,12 @@
   };
   var RUN_CYCLE = ['run_a', 'run_b', 'run_c', 'run_b'];
 
-  // Collision boxes are fitted to each sprite's real silhouette at build time and
-  // shipped in assets/manifest.json (see tools/fit_boxes.py). Sprite canvases are
-  // not tight, and one inset percentage cannot serve both a 61px bug and a 178px
-  // tower, so nothing here is hand-tuned any more.
+  // Collision boxes are fitted to each sprite's silhouette and shipped in
+  // assets/manifest.json; sprite canvases are not tight.
   var OBS = {};
   var HERO_BOX = null;   // {stance, slide, slideW, slideH, designH}
-  var TIER1 = ['bug', 'spike', 'usb'];
-  var TIER2 = ['bug', 'spike', 'usb', 'error', 'server'];
-  var TIER3 = ['bug', 'spike', 'usb', 'error', 'server', 'token', 'tower'];
+  var TIER1 = ['patrol', 'crystals', 'mine'];
+  var ALL_OBSTACLES = TIER1.concat(['drone', 'turret', 'gate', 'sentry']);
 
   // The earliest tier each obstacle may appear at. The tall obstacles are held
   // back because they are near the ceiling of what one jump clears, so they need
@@ -88,19 +93,17 @@
   // respect this, otherwise the clearance audit fires on a layout that was
   // generated with an obstacle one tier too early.
   var OBS_MIN_TIER = {
-    bug: 0, spike: 0, usb: 0,
-    error: 2, server: 2,
-    token: 3, tower: 3
+    patrol: 0, crystals: 0, mine: 0,
+    drone: 2, turret: 2,
+    gate: 3, sentry: 3
   };
   function legalAt(t) {
-    return TIER3.filter(function (k) { return OBS_MIN_TIER[k] <= t; });
+    return ALL_OBSTACLES.filter(function (k) { return OBS_MIN_TIER[k] <= t; });
   }
 
-  // What a stomp or a dash may destroy. token / tower are the tall must-jump
-  // hazards — their whole point is that one jump barely clears them — and the
-  // floating / event hazards stay honest threats: a bob obstacle is a slide
-  // problem, and an event wall is a set piece the player was warned about.
-  var BREAKABLE = { bug: 1, spike: 1, usb: 1, error: 1, server: 1 };
+  // Stomp and dash destroy only breakable ground obstacles; floating and event
+  // hazards remain separate threats.
+  var BREAKABLE = { patrol: 1, crystals: 1, mine: 1, drone: 1, turret: 1 };
   function breakable(o) {
     return !o.bob && !o.eventHazard && !!BREAKABLE[o.kind];
   }
@@ -111,10 +114,10 @@
   // table and nothing else, so every list of "the timed ones" is derived below
   // rather than written out again.
   var POWER_INFO = {
-    chip: { dur: 6.0, label: 'GPU 加速', col: '140,255,190' },
-    shield: { dur: 0, label: '防火墙', col: '120,225,255' },
-    magnet: { dur: 9.0, label: '数据吸附', col: '255,154,210' },
-    overclock: { dur: 8.0, label: '超频 得分×2', col: '255,209,102' }
+    chip: { dur: 6.0, label: 'GPU 加速', col: '255,201,82' },
+    shield: { dur: 0, label: '防火墙', col: '86,171,222' },
+    magnet: { dur: 9.0, label: '数据吸附', col: '231,133,166' },
+    overclock: { dur: 8.0, label: '超频 得分×2', col: '244,176,61' }
   };
   var TIMED_POWERS = POWERS.filter(function (k) { return POWER_INFO[k].dur > 0; });
 
@@ -131,7 +134,6 @@
   var ZONES = (M && M.ZONES) || [{ id: 'city', name: '', at: 0, layers: null, rule: null, mascot: 'deepseek' }];
   var EVENTS = (M && M.EVENTS) || [];
   var SHOP_SKILLS = (M && M.SHOP_SKILLS) || [];
-
   // ---- run modifiers -------------------------------------------------------
   // A single place where every event effect lands. Timed events push an entry
   // here and pop it when they expire; shop upgrades live in skillLevels. All
@@ -142,7 +144,8 @@
   // while `timed` entries are dropped when the event that pushed them ends.
   var mods = { timed: [], perm: [] };
   var skillLevels = {}, sale = { t: 0, ids: [] };
-  var eventDef = null, eventT = 0, lastEventId = '', lastEventGroup = '';
+  var eventDef = null, activeEventMod = null, eventT = 0, lastEventId = '', lastEventGroup = '';
+  var lastShopNotice = '';
 
   function mulOf(key) {
     var v = 1, i;
@@ -176,13 +179,13 @@
   function clearMods() {
     mods.timed.length = 0;
     mods.perm.length = 0;
-    eventDef = null; eventT = 0;
+    eventDef = null; activeEventMod = null; eventT = 0;
   }
 
   /** Zone change drops the outgoing district mood and active event. */
   function clearDistrictMods() {
     mods.timed.length = 0;
-    eventDef = null; eventT = 0;
+    eventDef = null; activeEventMod = null; eventT = 0;
   }
 
   // Tags that resolve once and leave nothing behind. Everything else is stored
@@ -380,8 +383,10 @@
     var at = safeHazardSlot(ahead, 92);
     if (at === null) return;
     var start = obstacles.length;
-    addObstacle('tower', at, { eventHazard: true });
-    auditPattern('event-wall', start, obstacles.length, 4);
+    // The event can fire before tall sentries are jumpable at the current speed.
+    var kind = tier() >= 3 ? 'sentry' : 'crystals';
+    addObstacle(kind, at, { eventHazard: true });
+    auditPattern('event-wall', start, obstacles.length, tier());
     gen.x = Math.max(gen.x, at + 92 + gapFor(tier()));
     addRiceArc(at - 60, GROUND_Y - 210, 5, 44);
     popText(camX + PLAYER_X, player.y - 210, '前方设卡', '#ff9ad2', 32);
@@ -389,13 +394,12 @@
   }
 
   function queueChallenge(kind) {
-    if (kind !== 'captcha') return;
-    var at = safeHazardSlot(1150, 123);
-    if (at === null) return;
-    addObstacle('error', at, { float: 142, bob: 6, eventHazard: true });
-    gen.x = Math.max(gen.x, at + 123 + gapFor(tier()));
-    addRiceLine(at - 60, GROUND_Y - 56, 6, 48);
-    popText(camX + PLAYER_X, player.y - 210, '前方滑动验证', '#ff9ad2', 28);
+    if(kind!=='captcha')return;
+    var at=safeHazardSlot(1150,123);
+    if(at===null)return;
+    addObstacle('drone',at,{float:142,bob:6,eventHazard:true});
+    gen.x=Math.max(gen.x,at+123+gapFor(tier()));
+    addRiceLine(at-60,GROUND_Y-56,6,48);
   }
 
   function openDiscountShop() {
@@ -414,14 +418,14 @@
   function updateShopNotice() {
     var el = document.getElementById('shopNotice');
     if (!el) return;
-    el.classList.toggle('on', sale.t > 0);
-    if (sale.t > 0) {
-      el.textContent = '限时特价 · ' + sale.ids.map(function (id) {
-        return SHOP_SKILLS.filter(function (s) { return s.id === id; })[0].name;
-      }).join(' / ') + ' · ' + Math.ceil(sale.t) + '秒';
-    } else {
-      el.textContent = '';
-    }
+    var key = sale.t > 0 ? sale.ids.join(',') + '|' + Math.ceil(sale.t) : '';
+    if (key === lastShopNotice) return;
+    var text = sale.t > 0 ? '限时特价 · ' + sale.ids.map(function (id) {
+      return SHOP_SKILLS.filter(function (s) { return s.id === id; })[0].name;
+    }).join(' / ') + ' · ' + Math.ceil(sale.t) + '秒' : '';
+    el.classList.toggle('on', !!text);
+    el.textContent = text;
+    lastShopNotice = key;
   }
 
   // ---- zone director -------------------------------------------------------
@@ -443,7 +447,7 @@
 
   function zoneAt() {
     var z = 0;
-    for (var i = 0; i < ZONES.length; i++) if (dist >= ZONES[i].at) z = i;
+    for(var i=0;i<ZONES.length;i++)if(dist>=ZONES[i].at)z=i;
     return z;
   }
 
@@ -477,7 +481,7 @@
   }
 
   // ---- event director ------------------------------------------------------
-  var genEvent = { next: 7600 };
+  var genEvent = { next:7600 };
 
   function eventGroup(e) {
     if (e.id === 'discount') return 'shop';
@@ -487,9 +491,9 @@
   }
 
   function nextEventGap() {
-    if (dist < 14000) return rand(8000, 10000);
-    if (dist < 30000) return rand(6000, 8500);
-    return rand(4500, 7000);
+    if(dist<14000)return rand(8000,10000);
+    if(dist<30000)return rand(6000,8500);
+    return rand(4500,7000);
   }
 
   function fireEvent() {
@@ -500,7 +504,7 @@
         !(e.id === 'discount' && sale.t > 0);
     });
     if (!pool.length) return false;
-    var ev = pick(pool);
+    var ev=pick(pool);
     lastEventId = ev.id; lastEventGroup = eventGroup(ev);
     eventDef = ev; eventT = ev.dur || 2.8;
     if (ev.shake) shake(ev.shake);
@@ -511,9 +515,8 @@
     // handle kept so the banner and the modifier expire together.
     var lasting = applyEval(ev.eval, true);
     if (ev.kind === 'timed' && lasting) {
-      var entry = { eval: lasting, t: ev.dur };
-      mods.timed.push(entry);
-      eventDef._mod = entry;
+      activeEventMod = { eval: lasting, t: ev.dur };
+      mods.timed.push(activeEventMod);
     }
 
     GameAudio.sfx('event');
@@ -526,10 +529,10 @@
     if (!eventDef) return;
     eventT -= dt;
     if (eventT > 0) return;
-    if (eventDef._mod) {
-      var k = mods.timed.indexOf(eventDef._mod);
+    if (activeEventMod) {
+      var k = mods.timed.indexOf(activeEventMod);
       if (k >= 0) mods.timed.splice(k, 1);
-      eventDef._mod = null;
+      activeEventMod = null;
     }
     eventDef = null;
     hideEventBanner();
@@ -545,7 +548,7 @@
       milestone.next = reached + step;
       var words = (M && M.MILESTONE.words) || ['继续'];
       popText(camX + PLAYER_X + 120, GROUND_Y - 300,
-        reached + 'm · ' + words[Math.floor(reached / step) % words.length], '#bff4ff', 26);
+        Math.floor(reached / 30) + 'm · ' + words[Math.floor(reached / step) % words.length], '#bff4ff', 26);
       GameAudio.sfx('milestone');
     }
   }
@@ -562,15 +565,22 @@
       game.state = 'shop';
       player.buffer = 0;
       keys = {};
+      releasePad(); touchJumpHeld = false;
       GameAudio.duckBgm(true);
       setSelecting(true);
       cx.shop.classList.remove('hide');
+      document.getElementById('stage').inert = true;
       renderShop();
+      cx.shopStatus.textContent = '跑道已暂停，选好升级再出发。';
+      document.getElementById('btnShopClose').focus({ preventScroll: true });
     } else if (game.state === 'shop') {
       game.state = 'playing';
       cx.shop.classList.add('hide');
+      document.getElementById('stage').inert = false;
       setSelecting(false);
       GameAudio.duckBgm(false);
+      player.invuln = Math.max(player.invuln, 1);
+      document.getElementById('btnShop').focus({ preventScroll: true });
     }
   }
 
@@ -588,6 +598,7 @@
     GameAudio.sfx('card');
     updateHud();
     renderShop();
+    cx.shopStatus.textContent = '已升级「' + skill.name + '」至 Lv.' + skillLevels[skill.id] + '，剩余 ' + game.rice + ' 白饭。';
   }
 
   /**
@@ -607,15 +618,13 @@
     var S = 96, c = document.createElement('canvas');
     c.width = S; c.height = S;
     var g = c.getContext('2d');
-    var plate = g.createLinearGradient(0, 0, 0, S);
-    plate.addColorStop(0, '#2a5c9e'); plate.addColorStop(1, '#0e2244');
-    g.fillStyle = plate;
+    g.fillStyle = '#edf7fd';
     g.beginPath();
     if (g.roundRect) g.roundRect(4, 4, S - 8, S - 8, 22);
     else g.rect(4, 4, S - 8, S - 8);
     g.fill();
-    g.lineWidth = 4;
-    g.strokeStyle = 'rgba(150,238,255,.7)';
+    g.lineWidth = 3;
+    g.strokeStyle = 'rgba(69,132,182,.62)';
     g.stroke();
     g.lineJoin = 'round';
     g.lineCap = 'round';
@@ -623,24 +632,24 @@
     var draw = {
       // 冲刺: a bolt, the universal "go faster"
       bolt: function () {
-        g.fillStyle = '#8affc1';
+        g.fillStyle = '#69bd93';
         g.beginPath();
         g.moveTo(58, 10); g.lineTo(24, 52); g.lineTo(44, 52);
         g.lineTo(36, 86); g.lineTo(72, 42); g.lineTo(50, 42);
         g.closePath();
         g.fill();
-        g.strokeStyle = '#0a1730'; g.lineWidth = 4; g.stroke();
+        g.strokeStyle = '#315d80'; g.lineWidth = 3; g.stroke();
       },
       // 下砸: a mallet coming down
       hammer: function () {
-        g.fillStyle = '#ffd166';
+        g.fillStyle = '#f0bd51';
         g.save();
         g.translate(48, 44); g.rotate(-0.5);
         g.fillRect(-26, -20, 52, 26);
-        g.fillStyle = '#ff9ad2';
+        g.fillStyle = '#e98d9b';
         g.fillRect(-26, -20, 10, 26);
         g.restore();
-        g.fillStyle = '#bff4ff';
+        g.fillStyle = '#cbe7f7';
         g.save();
         g.translate(52, 58); g.rotate(-0.5);
         g.fillRect(-5, 0, 10, 34);
@@ -648,23 +657,23 @@
       },
       // 滑翔: two swept wings
       wing: function () {
-        g.fillStyle = '#bff4ff';
+        g.fillStyle = '#cbe7f7';
         g.beginPath();
         g.moveTo(48, 52); g.quadraticCurveTo(20, 20, 6, 34);
         g.quadraticCurveTo(26, 46, 48, 60); g.closePath(); g.fill();
         g.beginPath();
         g.moveTo(48, 52); g.quadraticCurveTo(76, 20, 90, 34);
         g.quadraticCurveTo(70, 46, 48, 60); g.closePath(); g.fill();
-        g.strokeStyle = '#0a1730'; g.lineWidth = 3; g.stroke();
-        g.fillStyle = '#62e8ff';
+        g.strokeStyle = '#315d80'; g.lineWidth = 3; g.stroke();
+        g.fillStyle = '#72b9e6';
         g.beginPath(); g.moveTo(48, 44); g.lineTo(41, 74); g.lineTo(55, 74); g.closePath(); g.fill();
       },
       // 得分: three rising bars with an arrow
       chart: function () {
         var bars = [[20, 62, 14, 22], [41, 50, 14, 34], [62, 34, 14, 50]];
-        g.fillStyle = '#ffd166';
+        g.fillStyle = '#f0bd51';
         bars.forEach(function (b) { g.fillRect(b[0], b[1], b[2], b[3]); });
-        g.strokeStyle = '#8affc1'; g.lineWidth = 5;
+        g.strokeStyle = '#69bd93'; g.lineWidth = 4;
         g.beginPath(); g.moveTo(18, 56); g.lineTo(40, 40); g.lineTo(58, 44); g.lineTo(80, 20); g.stroke();
         g.beginPath(); g.moveTo(80, 20); g.lineTo(66, 20); g.moveTo(80, 20); g.lineTo(80, 34); g.stroke();
       }
@@ -674,12 +683,14 @@
   }
 
   function skillIconURL(skill) {
-    return skill.glyph ? glyphURL(skill.glyph) : 'assets/' + skill.icon + '.png';
+    return skill.glyph ? glyphURL(skill.glyph) : assetURL(skill.icon);
   }
 
   var TAG_CLASS = { '机动': 'mob', '收益': 'eco', '强化': 'up' };
 
   function renderShop() {
+    var scroll = cx.shopList.scrollTop;
+    var focused = document.activeElement && document.activeElement.dataset.skill;
     cx.shopBalance.textContent = '本局白饭：' + game.rice +
       (sale.t > 0 ? ' · 限时特价剩余 ' + Math.ceil(sale.t) + ' 秒' : '');
     cx.shopList.innerHTML = '';
@@ -689,6 +700,7 @@
       var onSale = sale.t > 0 && sale.ids.indexOf(skill.id) >= 0;
       var button = document.createElement('button');
       button.className = 'shopItem' + (onSale ? ' sale' : '');
+      button.dataset.skill = skill.id;
       var head = document.createElement('div'); head.className = 'siHead';
       var icon = document.createElement('img');
       icon.src = skillIconURL(skill); icon.alt = '';
@@ -705,7 +717,7 @@
       head.appendChild(icon); head.appendChild(title); head.appendChild(pips);
       var desc = document.createElement('small'); desc.textContent = skill.desc;
       var cost = document.createElement('strong');
-      cost.textContent = price === null ? '已满级' : price + ' 白饭' + (onSale ? ' · 六折' : '');
+      cost.textContent = price === null ? '已满级' : game.rice < price ? price + ' 白饭 · 还差 ' + (price - game.rice) : '升级 · ' + price + ' 白饭' + (onSale ? ' · 六折' : '');
       var tag = document.createElement('span');
       tag.className = 'siTag ' + (TAG_CLASS[skill.tag] || 'mob');
       tag.textContent = skill.tag || '';
@@ -717,6 +729,11 @@
       button.addEventListener('click', function () { buySkill(skill); });
       cx.shopList.appendChild(button);
     });
+    cx.shopList.scrollTop = scroll;
+    if (focused) {
+      var next = cx.shopList.querySelector('[data-skill="' + focused + '"]');
+      (next && !next.disabled ? next : document.getElementById('btnShopClose')).focus({preventScroll:true});
+    }
   }
 
   // ------------------------------------------------------------------- verbs
@@ -809,7 +826,6 @@
 
     game.score += STOMP_SCORE * chain * mul * scoreMul();
     game.rice += riceGain(2 * chain, mulOf('riceMul'));
-    bumpCombo();
 
     player.y = ob.y;
     player.vy = STOMP_V * k * Math.sqrt(mul);
@@ -854,11 +870,74 @@
   // PNG path, painted ones become data URLs so the same `<img src>` works.
   var powerIconURL = {};
 
+  var ASSET_VERSION = '20261001-city1';
+
+  /**
+   * The single place an asset URL is built. The preloader and every later
+   * consumer must go through this.
+   *
+   * The `?v=` is part of the cache key, so a hand-built path that omits it is a
+   * DIFFERENT resource as far as the browser is concerned: the copy loadAll()
+   * already decoded is not reused, and the image is fetched again — live, in
+   * the middle of a run, at the moment some UI element needs it. When that
+   * second request is slow or fails there is no retry, so the player is left
+   * looking at the browser's broken-image glyph. That is how the event banner
+   * could come up with a missing mascot while the identical file had already
+   * loaded fine at boot.
+   */
+  function assetURL(key, ext) {
+    return 'assets/' + key + (ext || '.png') + '?v=' + ASSET_VERSION;
+  }
+
+  /**
+   * Point the static shell at the same URLs assetURL() hands the preloader.
+   *
+   * A bare `assets/x.png` in index.html or art-direction.css cannot carry
+   * ASSET_VERSION, so the browser treats it as a different entry: it downloads
+   * the art a second time, and — the part that actually shows — keeps DISPLAYING
+   * whatever it had cached while the canvas quietly draws the new version. These
+   * two shells would drift apart after every art update. Declaring the key in
+   * `data-asset` and resolving it here keeps one URL per asset, and one place
+   * that knows the version.
+   *
+   * Runs before the preloader, so these requests and loadAll()'s are the same
+   * requests rather than a duplicate set.
+   */
+  /** The extension the loader would pick for `key`, so CSS asks for the same file. */
+  function assetExt(key) {
+    var cut = key.lastIndexOf('/');
+    var cat = cut < 0 ? key : key.slice(0, cut);
+    return ASSET_EXT[key] || ASSET_EXT[cat] || '.png';
+  }
+
+  /** Absolute on purpose; see the url() note in bindShellAssets. */
+  function assetCSSURL(key) {
+    return 'url("' + new URL(assetURL(key, assetExt(key)), document.baseURI).href + '")';
+  }
+
+  function bindShellAssets() {
+    var nodes = document.querySelectorAll('[data-asset]');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].src = assetURL(nodes[i].getAttribute('data-asset'));
+    }
+    // A relative url() inside a custom property is resolved against the
+    // stylesheet that SUBSTITUTES it (src/art-direction.css), not against the
+    // document, so a bare assetURL() path would be looked up as src/assets/...
+    // and 404. Resolving to an absolute URL also keeps sub-path deployments
+    // (project.pages.dev/game/) working, where a leading / would not.
+    var root = document.documentElement.style;
+    root.setProperty('--pattern-ai', assetCSSURL('ui/pattern_ai'));
+    // bg/sky, i.e. the webp the preloader already fetches — not the 989 KB PNG
+    // the two card illustration columns used to pull in separately. Same file as
+    // the canvas draws.
+    root.setProperty('--card-sky', assetCSSURL('bg/sky'));
+  }
+
   var PATHS = {
     hero: ['run_a', 'run_b', 'run_c', 'idle', 'jump', 'djump', 'apex', 'fall', 'hurt', 'cheer', 'slide'],
-    obstacle: ['bug', 'spike', 'usb', 'error', 'server', 'token', 'tower'],
-    item: ['rice', 'bigrice', 'chip', 'shield', 'magnet'],
-    ui: ['heart', 'emblem', 'grain', 'marquee', 'pattern_ai', 'badge_chip', 'badge_trophy',
+    obstacle: [],
+    item: ['rice', 'bigrice', 'chip', 'shield', 'magnet', 'overclock', 'dash', 'datacard', 'spark'],
+    ui: ['heart', 'heart_empty', 'emblem', 'marquee', 'pattern_ai', 'badge_score', 'badge_trophy',
       'icon_shop', 'icon_play', 'icon_pause', 'icon_sound', 'icon_mute', 'icon_home',
       'icon_restart'],
     bg: ['sky', 'far', 'mid', 'ground'],
@@ -869,15 +948,23 @@
     'bg/zones/market': ['sky', 'far', 'mid', 'ground'],
     'bg/zones/vault': ['sky', 'far', 'mid', 'ground'],
     'bg/zones/wall': ['sky', 'far', 'mid', 'ground'],
+    'obstacle/new': ['patrol', 'crystals', 'mine', 'drone', 'turret', 'gate', 'sentry'],
+    platform: ['surface_cloud', 'surface_glass', 'cloud_island'],
     mascot: ['deepseek', 'qwen', 'zhipu', 'claude', 'gpt', 'gemini']
   };
-  var OPTIONAL_CATS = { 'bg/zones/arena': 1, 'bg/zones/market': 1, 'bg/zones/vault': 1, 'bg/zones/wall': 1, mascot: 1 };
+  var OPTIONAL_CATS = { 'bg/zones/arena': 1, 'bg/zones/market': 1, 'bg/zones/vault': 1,
+    'bg/zones/wall': 1, platform: 1, mascot: 1 };
+  // Keep alpha-heavy parallax layers lossless: lossy WebP leaves pale matte
+  // fringes around the cutout skyline when it is composited over the sky.
   var ASSET_EXT = { bg: '.webp',
-    'bg/zones/arena': '.webp', 'bg/zones/market': '.webp',
-    'bg/zones/vault': '.webp', 'bg/zones/wall': '.webp' };
+    'bg/far': '.png', 'bg/mid': '.png',
+    'bg/zones/arena': '.webp', 'bg/zones/arena/far': '.png', 'bg/zones/arena/mid': '.png',
+    'bg/zones/market': '.webp', 'bg/zones/market/far': '.png', 'bg/zones/market/mid': '.png',
+    'bg/zones/vault': '.webp', 'bg/zones/vault/far': '.png', 'bg/zones/vault/mid': '.png',
+    'bg/zones/wall': '.webp', 'bg/zones/wall/far': '.png', 'bg/zones/wall/mid': '.png' };
 
   function loadManifest() {
-    return fetch('assets/manifest.json').then(function (r) {
+    return fetch('assets/manifest.json?v=' + ASSET_VERSION).then(function (r) {
       if (!r.ok) throw new Error('无法加载 assets/manifest.json');
       return r.json();
     }).then(function (m) {
@@ -892,15 +979,15 @@
       var optional = !!OPTIONAL_CATS[cat];
       PATHS[cat].forEach(function (name) {
         var key = cat + '/' + name;
-        var ext = ASSET_EXT[cat] || '.png';
-        var url = 'assets/' + key + ext;
+        var ext = assetExt(key);
+        var url = assetURL(key, ext);
         jobs.push(new Promise(function (res, rej) {
           var im = new Image();
           im.onload = function () { IMG[key] = im; res(); };
           im.onerror = function () {
             if (ext === '.webp') {
               ext = '.png';
-              url = 'assets/' + key + ext;
+              url = assetURL(key, ext);
               im.src = url;
               return;
             }
@@ -930,6 +1017,13 @@
   var particles = [];
   var floats = [];
 
+  var SOFT_COLORS = {
+    '#8affc1': '#69bd93', '#bff4ff': '#79b9dc', '#8ff3ff': '#79b9dc',
+    '#62e8ff': '#4f9ed2', '#5ee7ff': '#5ba9d5', '#ff9ad2': '#dd8ca5',
+    '#ffd166': '#dfa943', '#ffe9a8': '#f4d58c', '#ffffff': '#fff'
+  };
+  function softColor(col) { return SOFT_COLORS[String(col || '').toLowerCase()] || col; }
+
   function burst(x, y, opt) {
     var n = opt.n || 8;
     for (var i = 0; i < n; i++) {
@@ -940,21 +1034,22 @@
         g: opt.g == null ? 900 : opt.g,
         life: rand(opt.l0 || 0.3, opt.l1 || 0.7), t: 0,
         r: rand(opt.r0 || 3, opt.r1 || 7),
-        col: Array.isArray(opt.col) ? pick(opt.col) : (opt.col || '#fff'),
+        col: softColor(Array.isArray(opt.col) ? pick(opt.col) : (opt.col || '#fff')),
         shape: opt.shape || 'circle', rot: rand(0, 6.28), vr: rand(-8, 8)
       });
     }
   }
 
   function popText(x, y, txt, col, size) {
-    floats.push({ x: x, y: y, txt: txt, col: col || '#fff', size: size || 26, t: 0, life: 0.85 });
+    var fill = String(col || '').toLowerCase() === '#ffffff' ? '#4f79a0' : softColor(col || '#4f79a0');
+    floats.push({ x: x, y: y, txt: txt, col: fill, size: size || 26, t: 0, life: 0.85 });
   }
 
-  var RICE_COL = ['#ffe9a8', '#ffd166', '#ffffff', '#bff4ff'];
+  var RICE_COL = ['#f4d58c', '#dfa943', '#ffffff', '#79b9dc'];
 
   // ------------------------------------------------------------------ player
   var player = {
-    y: GROUND_Y, vy: 0, onGround: true, gravMul: 1, riseMul: 1, fallMul: FALL_MUL,
+    y: GROUND_Y, groundY: GROUND_Y, vy: 0, onGround: true, gravMul: 1, riseMul: 1, fallMul: FALL_MUL,
     cuttable: false,
     jumps: 0, sliding: false, slideT: 0,
     coyote: 0, buffer: 0, wince: 0, cheer: 0, shock: 0,
@@ -1015,7 +1110,72 @@
 
   // ------------------------------------------------------------------- world
   var camX = 0, speed = BASE_SPEED, dist = 0, worldT = 0;
-  var obstacles = [], pickups = [], powerups = [];
+  var obstacles = [], pickups = [], powerups = [], platforms = [], trackGaps = [];
+  var platformSprite = null;
+  var shots = [], recentPatterns = [], recentObstacleKinds = [], pickupBag = [];
+  function shuffled(list) {
+    var out = list.slice();
+    for (var i = out.length - 1; i > 0; i--) {
+      var j = randInt(0, i), swap = out[i]; out[i] = out[j]; out[j] = swap;
+    }
+    return out;
+  }
+  function variedObstacle(list) {
+    var choices = list.filter(function (k) { return recentObstacleKinds.indexOf(k) < 0; });
+    var k = pick(choices.length ? choices : list);
+    recentObstacleKinds.push(k);
+    if (recentObstacleKinds.length > 2) recentObstacleKinds.shift();
+    return k;
+  }
+  function obstaclePose(o) {
+    var t = worldT * 2.2 + o.phase, dx = 0, dy = 0;
+    if (o.kind === 'patrol') { dx = Math.sin(t) * 22; dy = -Math.abs(Math.sin(t * 2)) * 5; }
+    if (o.kind === 'mine') { dx = Math.sin(t * .65) * 24; dy = -14 - Math.sin(t) * 12; }
+    if (o.kind === 'drone') { dx = Math.sin(t * .8) * 34; dy = Math.sin(t) * (o.bob || 16); }
+    if (o.kind === 'sentry') dx = Math.sin(t * .7) * 14;
+    if (o.kind === 'turret' && o.recoil > 0) dx = o.recoil * 35;
+    if (o.motion) dx = Math.sin(t * 1.15) * o.motion;
+    return { x: o.x + dx, y: o.y + dy, dx: dx, dy: dy };
+  }
+  function obstacleBox(o) {
+    var p = obstaclePose(o);
+    return { x: o.box.x + p.dx, y: o.box.y + p.dy, w: o.box.w, h: o.box.h };
+  }
+  function updateMovingHazards(dt) {
+    obstacles.forEach(function (o) {
+      if (o.dead || o.kind !== 'turret') return;
+      o.recoil = Math.max(0, (o.recoil || 0) - dt);
+      var lead = o.x - camX - PLAYER_X;
+      if (lead < 260 || lead > 850) return;
+      var before = o.attackT || 0;
+      o.attackT = before + dt;
+      if (before < .85 && o.attackT >= .85) {
+        shots.push({ kind:'pulse', x:o.x - 12, y:o.y + o.h * .36, w:24, h:12, life:3, box:{h:12} });
+        o.recoil = .18;
+      }
+      if (o.attackT > 2.6) o.attackT = 0;
+    });
+    for (var i = shots.length - 1; i >= 0; i--) {
+      var s = shots[i];
+      s.x -= 200 * dt; s.life -= dt;
+      if (s.dead || s.life <= 0 || s.x < camX - 80) { shots.splice(i, 1); continue; }
+      if (aabb(playerBox(), {x:s.x, y:s.y - 6, w:s.w, h:12})) {
+        if (player.dashT <= 0) damage(s);
+        s.dead = true;
+      }
+    }
+  }
+  function drawShots() {
+    ctx.save();
+    shots.forEach(function (s) {
+      if (s.dead) return;
+      var x = s.x - camX;
+      ctx.fillStyle = '#ef7b89'; ctx.beginPath(); ctx.ellipse(x + 12, s.y, 15, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff4cd'; ctx.beginPath(); ctx.ellipse(x + 9, s.y, 9, 3, 0, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.restore();
+  }
+  var pickupArtIndex = 0, PICKUP_ART = ['rice', 'rice', 'datacard', 'rice', 'spark'];
   var gen = { x: 1500, sincePower: 0 };
 
   function speedAt(d) {
@@ -1028,12 +1188,13 @@
   function addObstacle(kind, x, opts) {
     opts = opts || {};
     var cfg = OBS[kind];
-    var img = IMG['obstacle/' + kind];
+    var img = IMG['obstacle/new/' + kind];
     var w = img.naturalWidth, h = img.naturalHeight;
     var floatY = opts.float ? GROUND_Y - opts.float : GROUND_Y;
     var o = {
       kind: kind, cfg: cfg, img: img, w: w, h: h,
-      x: x, y: floatY - h, bob: opts.bob || 0, phase: rand(0, 6.28),
+      x: x, y: floatY - h, bob: opts.bob || 0, motion: opts.motion || 0,
+      phase: rand(0, 6.28),
       eventHazard: !!opts.eventHazard, nearMiss: false
     };
     o.box = { x: x + cfg.x, y: o.y + cfg.y, w: cfg.w, h: cfg.h };
@@ -1043,9 +1204,17 @@
 
   function addRice(x, y, kind) {
     kind = kind || 'rice';
-    var img = IMG['item/' + kind];
+    var artKind = kind;
+    var artScale = kind === 'bigrice' ? .8 : .72;
+    if (kind === 'rice') {
+      if (!pickupBag.length) pickupBag = shuffled(PICKUP_ART);
+      artKind = pickupBag.pop();
+      if (artKind === 'datacard') artScale = .42;
+      if (artKind === 'spark') artScale = .64;
+    }
+    var img = IMG['item/' + artKind] || IMG['item/' + kind];
     var pickup = {
-      kind: kind, img: img, x: x, y: y,
+      kind: kind, artKind: artKind, artScale: artScale, img: img, x: x, y: y,
       r: kind === 'bigrice' ? 40 : 34,
       phase: rand(0, 6.28), got: false, pop: 0
     };
@@ -1079,22 +1248,79 @@
     powerups.push({ kind: kind, img: img, x: x, y: y, r: 40, phase: rand(0, 6.28), got: 0 });
   }
 
+  function addPlatform(x, y, w) {
+    var p = { x: x, y: y + rand(-10, 10), w: w - rand(0, 14), h: 28 };
+    platforms.push(p);
+    return p;
+  }
+
+  function addTrackGap(x, w) {
+    var gap = { x: x, w: w };
+    trackGaps.push(gap);
+    return gap;
+  }
+
+  function gapAt(x) {
+    for (var i = 0; i < trackGaps.length; i++) {
+      var gap = trackGaps[i];
+      if (x >= gap.x && x < gap.x + gap.w) return gap;
+      if (gap.x > x) break;
+    }
+    return null;
+  }
+
+  function hasTrackSupportAt(x, y) {
+    for (var i = 0; i < platforms.length; i++) {
+      var p = platforms[i];
+      if (Math.abs(p.y - y) < 1.5 && x >= p.x - 20 && x <= p.x + p.w + 20) return true;
+      if (p.x > x + 20) break;
+    }
+    return Math.abs(y - GROUND_Y) < 1.5 && !gapAt(x);
+  }
+
+  function landingSurface(fromY, toY, x) {
+    if (toY < fromY) return null;
+    var landing = null;
+    var left = x - PLAYER_BOX_W * 0.46;
+    var right = x + PLAYER_BOX_W * 0.46;
+    for (var i = 0; i < platforms.length; i++) {
+      var p = platforms[i];
+      if (p.y < fromY || p.y > toY) continue;
+      if (right < p.x || left > p.x + p.w) continue;
+      if (landing === null || p.y < landing) landing = p.y;
+      if (p.x > right && p.y >= toY) break;
+    }
+    if (fromY <= GROUND_Y && toY >= GROUND_Y && !gapAt(x) &&
+        (landing === null || GROUND_Y < landing)) landing = GROUND_Y;
+    return landing;
+  }
+
+  function pruneTrackFeatures() {
+    while (trackGaps.length && trackGaps[0].x + trackGaps[0].w < camX - 900) trackGaps.shift();
+    while (platforms.length && platforms[0].x + platforms[0].w < camX - 900) platforms.shift();
+  }
+
+  function recoverFromGap() {
+    var worldX = camX + PLAYER_X;
+    var gap = gapAt(worldX);
+    var safeX = gap ? gap.x + gap.w + 90 : worldX + 260;
+    var skip = Math.max(0, safeX - worldX);
+    if (skip > 0) { camX += skip; dist += skip; }
+    damage({ kind: 'gap', box: { h: 0 } });
+    player.y = GROUND_Y; player.groundY = GROUND_Y;
+    player.vy = 0; player.onGround = true; player.jumps = 0;
+    player.coyote = 0; player.buffer = 0; player.sliding = false;
+    player.gliding = false; player.glideT = 0; player.stompArm = false;
+    player.stompChain = 0;
+  }
+
   // --------------------------------------------------------- level director
   // Distance gates for the difficulty ladder, spread out on purpose: the opening
   // stretch stays in the readable part of the curve so the obstacles can be
   // learned before the speed and the trickier patterns arrive.
   function tier() {
-    if (dist < 3200) return 0;
-    if (dist < 8500) return 1;
-    if (dist < 16000) return 2;
-    if (dist < 26000) return 3;
-    return 4;
-  }
-
-  function obstaclePool(t) {
-    if (t <= 0) return TIER1;
-    if (t <= 2) return TIER2;
-    return TIER3;
+    var distanceTier=dist<2200?0:dist<5200?1:dist<9800?2:dist<17000?3:4;
+    return distanceTier;
   }
 
   // ---- jump-arc budget -----------------------------------------------------
@@ -1133,7 +1359,7 @@
     return Math.sqrt(BASE_SPEED * speed) * (clearExit(H) - t1) - PLAYER_BOX_W - CLEAR_SLACK;
   }
 
-  var TIER_START = [0, 3200, 8500, 16000, 26000];
+  var TIER_START = [0, 2200, 5200, 9800, 17000];
   /** Slowest speed at which a pattern with this min tier can appear. */
   function patternFloor(minTier) {
     return speedAt(TIER_START[Math.min(minTier, 4)]);
@@ -1151,7 +1377,8 @@
     var out = [], cur = null;
     for (var i = 0; i < solid.length; i++) {
       var o = solid[i];
-      var L = o.box.x, R = o.box.x + o.box.w, H = o.box.h;
+      // Sweeping obstacles occupy their whole horizontal travel for the audit.
+      var L = o.box.x - (o.motion || 0), R = o.box.x + o.box.w + (o.motion || 0), H = o.box.h;
       if (cur && L - cur.r <= CHAIN_GAP) {
         if (R > cur.r) cur.r = R;
         if (H > cur.hMax) cur.hMax = H;
@@ -1196,19 +1423,62 @@
   var PATTERNS = [
     // one obstacle with a rice arc over it — the bread-and-butter beat
     { id: 'single', min: 0, build: function (x, t) {
-      var o = addObstacle(pick(obstaclePool(t)), x);
+      var o = addObstacle(variedObstacle(legalAt(t)), x);
       addRiceArc(x - 40, GROUND_Y - o.h - 46, 5, 46);
     } },
 
     // pure reward: a fat arc of rice and no obstacle at all, a free breather
     { id: 'rice', min: 0, build: function (x) {
-      addRiceLine(x, GROUND_Y - 120, 4, 44);
-      addRiceArc(x + 190, GROUND_Y - 150, 6, 50);
+      var n = randInt(4, 7), dx = rand(48, 62);
+      var high = rand(130, 180);
+      if (Math.random() < .5) addRiceArc(x, GROUND_Y - high, n, dx);
+      else for (var j = 0; j < n; j++) addRice(x + j * dx, GROUND_Y - 95 - j * 17);
+    } },
+    { id: 'wave-trail', min: 0, build: function (x) {
+      var n = randInt(6, 9), dx = rand(55, 70);
+      for (var j = 0; j < n; j++) addRice(x + j * dx, GROUND_Y - 100 - Math.sin(j / (n - 1) * Math.PI) * 100);
+    } },
+    { id: 'fork-trail', min: 1, build: function (x) {
+      var o = addObstacle(variedObstacle(['patrol', 'mine', 'crystals']), x + 110);
+      addRiceLine(x - 50, GROUND_Y - 55, 3, 43);
+      addRiceArc(x + 50, GROUND_Y - o.h - 65, randInt(4, 6), 48);
+      addRice(x + 150, GROUND_Y - o.h - 140, 'bigrice');
+    } },
+
+    // A real break in the runway crossed by a row of small, one-way cloud
+    // islands. Their tops use the same walkable y as the landing simulation.
+    { id: 'cloud-bridge', min: 0, build: function (x) {
+      var start = x + 110;
+      var step = Math.sqrt(speed / BASE_SPEED);
+      addTrackGap(start, 980 * step);
+      addPlatform(start - 70 * step, GROUND_Y - 65, 145 * step);
+      addPlatform(start + 205 * step, GROUND_Y - 132, 165 * step);
+      addPlatform(start + 500 * step, GROUND_Y - 83, 155 * step);
+      addPlatform(start + 785 * step, GROUND_Y - 122, 150 * step);
+      addRiceArc(start + 205 * step, GROUND_Y - 205, 4, 52 * step);
+      addRice(start + 570 * step, GROUND_Y - 165);
+      addRiceArc(start + 785 * step, GROUND_Y - 190, 3, 48 * step);
+      hint('gap', start - 360);
+    } },
+
+    // A shorter alternate island route keeps the skyline varied after the
+    // opening while preserving broad, readable landing zones.
+    { id: 'island-hop', min: 1, build: function (x) {
+      var start = x + 125;
+      var step = Math.sqrt(speed / BASE_SPEED);
+      addTrackGap(start, 890 * step);
+      addPlatform(start - 60 * step, GROUND_Y - 60, 150 * step);
+      addPlatform(start + 220 * step, GROUND_Y - 135, 155 * step);
+      addPlatform(start + 515 * step, GROUND_Y - 80, 160 * step);
+      addPlatform(start + 750 * step, GROUND_Y - 130, 150 * step);
+      addRiceArc(start + 220 * step, GROUND_Y - 205, 4, 50 * step);
+      addRiceArc(start + 760 * step, GROUND_Y - 195, 3, 48 * step);
+      hint('gap', start - 360);
     } },
 
     // Choice of a safe approach line and a higher-value jump route.
     { id: 'choice', min: 1, build: function (x) {
-      var o = addObstacle(pick(TIER1), x + 120);
+      var o = addObstacle(variedObstacle(TIER1), x + 120);
       addRiceLine(x - 105, GROUND_Y - 94, 3, 42);
       addRiskLine(x + 20, GROUND_Y - o.h - 75, 5, 48);
     } },
@@ -1216,56 +1486,64 @@
     // a tall wall, with a big rice floating over the top of it. Tiers 2+ only:
     // the pool is the genuinely tall set, which needs the faster arc to clear.
     { id: 'tall', min: 2, build: function (x, t) {
-      var tall = ['error', 'server'].concat(t >= 3 ? ['token', 'tower'] : []);
-      var o = addObstacle(pick(tall), x);
+      var tall = ['turret'].concat(t >= 3 ? ['gate', 'sentry'] : []);
+      var o = addObstacle(variedObstacle(tall), x);
       addRice(x + o.w / 2 - 30, GROUND_Y - o.h - 74, 'bigrice');
       addRiceArc(x - 30, GROUND_Y - o.h - 40, 3, 46);
     } },
 
     // floating hazard: the only way through is to slide
     { id: 'float', min: 2, build: function (x) {
-      addObstacle('error', x, { float: 142, bob: 6 });
+      addObstacle('drone', x, { float: 142, bob: 6 });
       addRiceLine(x - 70, GROUND_Y - 56, 3, 46);
       addRiceLine(x + 160, GROUND_Y - 56, 2, 46);
     } },
 
+    // The sweeping drone shifts its horizontal timing but keeps the slide lane
+    // open throughout its cycle. A ground mine makes a separate second action.
+    { id: 'sweep-and-hop', min: 2, build: function (x) {
+      addObstacle('drone', x, { float: 142, bob: 6, motion: 78 });
+      addObstacle('mine', x + 680);
+      addRiceLine(x + 200, GROUND_Y - 55, 4, 48);
+    } },
+
+    // A moving ground hazard has a wide but still single-jumpable envelope.
+    { id: 'moving-mine', min: 2, build: function (x) {
+      var o = addObstacle('mine', x, { motion: 38 });
+      addRiceArc(x - 72, GROUND_Y - o.h - 72, 6, 48);
+    } },
+
     // slide under, then a wall much further along: two separate actions
     { id: 'slide-then-wall', min: 2, build: function (x) {
-      addObstacle('error', x, { float: 142, bob: 6 });
-      addObstacle(pick(['spike', 'usb']), x + 620);
+      addObstacle('drone', x, { float: 142, bob: 6 });
+      addObstacle(pick(['crystals', 'mine']), x + 620);
       addRiceLine(x + 200, GROUND_Y - 150, 4, 48);
     } },
 
     // A sliding corridor with two spaced verification bars. The floor line
     // teaches the safe route; its centre rice is worth a little more.
     { id: 'slide-corridor', min: 3, build: function (x) {
-      addObstacle('error', x, { float: 142, bob: 6 });
-      addObstacle('error', x + 580, { float: 142, bob: 6 });
+      addObstacle('drone', x, { float: 142, bob: 6 });
+      addObstacle('drone', x + 580, { float: 142, bob: 6 });
       addRiskLine(x + 180, GROUND_Y - 56, 5, 46);
     } },
 
-    // The only tight pair is held back to the final tier.
+    // The tight pair is held back to the final tier.
     { id: 'pair', min: 4, build: function (x) {
-      addObstacle('bug', x);
-      addObstacle('bug', x + 60);
+      addObstacle('patrol', x);
+      addObstacle('patrol', x + 80);
       addRiceArc(x - 10, GROUND_Y - 185, 6, 44);
     } },
 
-    // ---- beats for the new verbs ------------------------------------------
-    // Every one of these is still clearable by jumping alone; the new verbs are
-    // the greedy route, never the required one. A gap only separates two
-    // obstacles into their own clusters once it clears CHAIN_GAP measured from
-    // the first one's hitbox edge (240 + the ~57-83px the box is inset from its
-    // art), which is what tools/verify_balance.py section 3 checks: get this
-    // wrong and two obstacles become one cluster that no single jump can span.
+    // ---- optional verb beats ----------------------------------------------
+    // These remain clearable by jumping alone; the new verbs are optional.
 
-    // Stomp chain: three bugs, each its own cluster (320 - 57 > 240). A bounce
-    // alone lands ~100px short of the next lid, so the chain asks for a bounce
-    // plus a corrective double jump -- the combination this beat exists to teach.
+    // Stomp chain: three separated obstacles that reward a bounce plus a
+    // corrective double jump.
     { id: 'stomp-chain', min: 2, build: function (x) {
       for (var i = 0; i < 3; i++) {
-        addObstacle('bug', x + i * 320);
-        addRiceArc(x + i * 320 - 54, GROUND_Y - 150, 3, 44);
+        addObstacle('patrol', x + i * 420);
+        addRiceArc(x + i * 420 - 54, GROUND_Y - 150, 3, 44);
       }
       hint('stomp', x + 120);
     } },
@@ -1285,7 +1563,7 @@
     // obstacle — two of them close enough to share one dash would sit inside
     // CHAIN_GAP and merge into a cluster no jump arc can span.
     { id: 'dash-lane', min: 3, build: function (x) {
-      addObstacle('usb', x);
+      addObstacle('mine', x);
       addRiskLine(x - 90, GROUND_Y - 46, 5, 74);
       hint('dash', x + 60);
     } }
@@ -1298,7 +1576,8 @@
   var HINT_TEXT = {
     stomp: '空中按住 ↓ 下砸，踩碎障碍',
     glide: '到最高点后按住跳跃键滑翔',
-    dash: 'Shift 冲刺，撞碎小障碍'
+    dash: 'Shift 冲刺，撞碎小障碍',
+    gap: '前方跑道断开，连续跳上云岛'
   };
 
   function hint(kind, x) { hints.push({ kind: kind, x: x }); }
@@ -1344,10 +1623,14 @@
     var horizon = camX + VIEW_W + 700;
     while (gen.x < horizon) {
       var t = tier();
-      var pool = PATTERNS.filter(function (p) { return p.min <= t; });
-      var p = pick(pool);
+      var pool = PATTERNS.filter(function(p){return p.min<=t;});
+      var candidates=pool.filter(function(p){return recentPatterns.indexOf(p.id)<0;});
+      var p=!Object.keys(patternCounts).length ? PATTERNS[0] : pick(candidates.length?candidates:pool);
+      recentPatterns.push(p.id);
+      if(recentPatterns.length>Math.min(3,pool.length-1))recentPatterns.shift();
 
       var o0 = obstacles.length, k0 = pickups.length;
+      var platform0 = platforms.length, gap0 = trackGaps.length;
       patternCounts[p.id] = (patternCounts[p.id] || 0) + 1;
       p.build(gen.x, t);
 
@@ -1359,10 +1642,18 @@
         xEndObst = Math.max(xEndObst, o.x + o.w);
       }
       for (var j = k0; j < pickups.length; j++) xEnd = Math.max(xEnd, pickups[j].x + 40);
+      for (var pi = platform0; pi < platforms.length; pi++) {
+        xStart = Math.min(xStart, platforms[pi].x);
+        xEnd = Math.max(xEnd, platforms[pi].x + platforms[pi].w);
+      }
+      for (var gi = gap0; gi < trackGaps.length; gi++) {
+        xStart = Math.min(xStart, trackGaps[gi].x);
+        xEnd = Math.max(xEnd, trackGaps[gi].x + trackGaps[gi].w);
+      }
       xEnd = Math.max(xEnd, xEndObst);
       if (xStart !== Infinity) auditPattern(p, o0, obstacles.length, t);
 
-      var adv = (xEnd - gen.x) + gapFor(t);
+      var adv = (xEnd - gen.x) + gapFor(t) * rand(1.0, 1.22) + 80;
 
       // sprinkle a powerup into the gap every so often
       gen.sincePower++;
@@ -1403,7 +1694,18 @@
     var g = imgOr(backdropKey(i, 'ground')) || IMG['bg/ground'];
     var off = camX % g.naturalWidth;
     ctx.globalAlpha = alpha;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-VIEW_W, GROUND_Y, VIEW_W * 3, VH / ZOOM);
+    for (var gi = 0; gi < trackGaps.length; gi++) {
+      var cut = trackGaps[gi];
+      var cutX = cut.x - camX;
+      if (cutX + cut.w < 0 || cutX > VIEW_W) continue;
+      ctx.rect(cutX, GROUND_Y, cut.w, VH / ZOOM);
+    }
+    ctx.clip('evenodd');
     for (var x = -off; x < VIEW_W; x += g.naturalWidth) ctx.drawImage(g, x, GROUND_Y);
+    ctx.restore();
     ctx.globalAlpha = 1;
   }
 
@@ -1413,6 +1715,65 @@
       drawBackdropZone(zoneIdx, 1 - zoneTransition.t);
     } else {
       drawBackdropZone(zoneIdx, 1);
+    }
+  }
+
+  /** A bright, illustrated track cap laid over the continuous ground art. */
+  function drawTrackSurface() {
+    var i=zoneIdx,alpha=1;
+    var key = (ZONES[i] && ['arena','vault','wall'].indexOf(ZONES[i].id)>=0)
+      ? 'platform/surface_glass' : 'platform/surface_cloud';
+    var src = imgOr(key);
+    if (!src) return;
+    var w = src.naturalWidth || src.width;
+    var h = src.naturalHeight || src.height;
+    var off = camX % w;
+    ctx.save();
+    ctx.globalAlpha = 0.96*alpha;
+    ctx.beginPath();
+    ctx.rect(-VIEW_W, GROUND_Y - 8, VIEW_W * 3, VH / ZOOM);
+    trackGaps.forEach(function (gap) { ctx.rect(gap.x - camX, GROUND_Y - 8, gap.w, VH / ZOOM); });
+    ctx.clip('evenodd');
+    for (var x = -off; x < VIEW_W; x += w) ctx.drawImage(src, x, GROUND_Y - 5, w, h);
+    ctx.restore();
+  }
+
+  function drawTrackGaps() {
+    for (var i = 0; i < trackGaps.length; i++) {
+      var gap = trackGaps[i];
+      var left = gap.x - camX, right = left + gap.w;
+      if (right < -40 || left > VIEW_W + 40) continue;
+      ctx.fillStyle = '#6eaed0';
+      ctx.fillRect(left - 6, GROUND_Y - 4, 6, 30);
+      ctx.fillRect(right, GROUND_Y - 4, 6, 30);
+    }
+  }
+
+  function drawFloatingPlatforms() {
+    var src = platformSprite || imgOr('platform/cloud_island');
+    for (var i = 0; i < platforms.length; i++) {
+      var p = platforms[i];
+      var x = p.x - camX;
+      if (x + p.w < -80 || x > VIEW_W + 80) continue;
+      if (src) {
+        var h = p.w * (src.naturalHeight || src.height) / (src.naturalWidth || src.width);
+        // The generated sprite has a little sky around its island. Align its
+        // straight cloud-top edge with the one-way landing surface.
+        ctx.drawImage(src, x, p.y - h * 0.325, p.w, h);
+      } else {
+        ctx.save();
+        ctx.fillStyle = '#76bde9';
+        ctx.strokeStyle = '#365d9c';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.roundRect(x + 8, p.y + 2, p.w - 16, 26, 13);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#d7f5ff';
+        ctx.beginPath();
+        ctx.roundRect(x, p.y - 5, p.w, 16, 8);
+        ctx.fill();
+        ctx.restore();
+      }
     }
   }
 
@@ -1434,13 +1795,16 @@
     ctx.globalAlpha = 1;
   }
 
+  var vignette = null;
   /** Screen-space vignette, drawn over everything to keep the eye on the action. */
   function drawVignette() {
-    var vg = ctx.createLinearGradient(0, 0, 0, VH);
-    vg.addColorStop(0, 'rgba(4,10,26,.42)');
-    vg.addColorStop(0.42, 'rgba(4,10,26,0)');
-    vg.addColorStop(1, 'rgba(3,8,20,.5)');
-    ctx.fillStyle = vg;
+    if (!vignette) {
+      vignette = ctx.createLinearGradient(0, 0, 0, VH);
+      vignette.addColorStop(0, 'rgba(255,255,255,.05)');
+      vignette.addColorStop(0.46, 'rgba(255,255,255,0)');
+      vignette.addColorStop(1, 'rgba(72,139,194,.06)');
+    }
+    ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, VW, VH);
   }
 
@@ -1456,11 +1820,17 @@
       if (!img) continue;
       // `|| img.width` covers the paint-on-boot canvases (tint / glyph icons),
       // which have no naturalWidth and would otherwise draw at NaN.
-      var w = (img.naturalWidth || img.width) * sc;
-      var h = (img.naturalHeight || img.height) * sc;
+      var w = (img.naturalWidth || img.width) * (p.artScale || 1) * sc;
+      var h = (img.naturalHeight || img.height) * (p.artScale || 1) * sc;
+      ctx.save();
       if (p.got) ctx.globalAlpha = Math.max(0, 1 - p.pop * 2.4);
+      // The bowl/card art already has its own silhouette; a large white disc
+      // behind every pickup made close formations merge into a washed-out blob.
+      ctx.shadowColor = 'rgba(67,112,148,.22)';
+      ctx.shadowBlur = 3;
+      ctx.shadowOffsetY = 2;
       ctx.drawImage(img, sx - w / 2, p.y - h / 2 + bob, w, h);
-      ctx.globalAlpha = 1;
+      ctx.restore();
     }
   }
 
@@ -1477,51 +1847,42 @@
       if (!img) continue;
       var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
       var sc = p.got ? 1 + p.got * 1.6 : 1;
-      // aura, tinted per kind so a glance at the colour says which one it is
+      // A pale badge keeps the pickup legible without the old neon aura.
       var col = (POWER_INFO[p.kind] && POWER_INFO[p.kind].col) || '120,235,255';
-      var glow = ctx.createRadialGradient(sx, p.y + bob, 4, sx, p.y + bob, 58 * sc);
-      glow.addColorStop(0, 'rgba(' + col + ',.5)');
-      glow.addColorStop(1, 'rgba(' + col + ',0)');
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(sx, p.y + bob, 58 * sc, 0, 6.2832);
-      ctx.fill();
+      ctx.save();
       if (p.got) ctx.globalAlpha = Math.max(0, 1 - p.got * 2.2);
+      // Let each illustrated item keep its own material and silhouette instead
+      // of placing every different power on the same white coin-like badge.
+      ctx.shadowColor = 'rgba(' + col + ',.28)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 3;
       ctx.drawImage(img, sx - w * sc / 2, p.y + bob - h * sc / 2, w * sc, h * sc);
-      ctx.globalAlpha = 1;
+      ctx.restore();
     }
   }
 
   function drawObstacles() {
     for (var i = 0; i < obstacles.length; i++) {
       var o = obstacles[i];
-      var sx = o.x - camX;
+      var pose = obstaclePose(o);
+      var sx = pose.x - camX;
       if (sx < -220 || sx > VIEW_W + 220) continue;
-      var bob = o.bob ? Math.sin(worldT * 2.2 + o.phase) * o.bob : 0;
       // contact shadow
       if (!o.bob) {
         ctx.globalAlpha = 0.3;
-        ctx.fillStyle = '#04101f';
+        ctx.fillStyle = 'rgba(57,104,150,.2)';
         ctx.beginPath();
-        ctx.ellipse(sx + o.w / 2, GROUND_Y + 5, o.w * 0.42, 8, 0, 0, 6.2832);
+        ctx.ellipse(sx + o.w / 2, GROUND_Y + 5, o.w * 0.42, 6, 0, 0, 6.2832);
         ctx.fill();
         ctx.globalAlpha = 1;
       }
-      ctx.drawImage(o.img, sx, o.y + bob);
-      // Keep the inherited silhouette and hitbox, but make ambiguous old art
-      // read as a hazard rather than a pickup or a background pillar.
-      if (o.kind === 'tower' || o.kind === 'usb') {
+      ctx.drawImage(o.img,sx,pose.y);
+      if (o.kind === 'turret' && o.attackT > 0 && o.attackT < .85) {
         ctx.save();
-        ctx.textAlign = 'center';
-        ctx.font = '900 14px "Baloo 2",sans-serif';
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = '#0a1730';
-        ctx.fillStyle = '#ff9ad2';
-        var badge = o.kind === 'tower' ? '429' : '断线';
-        var badgeY = o.kind === 'tower' ? o.y + 22 : o.y + o.h - 12;
-        ctx.strokeText(badge, sx + o.w / 2, badgeY);
-        ctx.fillText(badge, sx + o.w / 2, badgeY);
-        ctx.restore();
+        ctx.strokeStyle = 'rgba(233,100,123,' + (.3 + o.attackT * .6) + ')';
+        ctx.setLineDash([7, 7]); ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(sx, pose.y + o.h * .36);
+        ctx.lineTo(sx - 210, pose.y + o.h * .36); ctx.stroke(); ctx.restore();
       }
       // The cue follows the obstacle rather than the screen, so two quick beats
       // remain distinguishable. It is decoration only: the hitbox never changes.
@@ -1532,13 +1893,26 @@
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.textAlign = 'center';
-        ctx.font = '800 23px "M PLUS Rounded 1c",sans-serif';
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = '#0a1730';
-        ctx.fillStyle = o.eventHazard ? '#ffd166' : slide ? '#62e8ff' : '#ff9ad2';
-        var cue = slide ? '↓ 滑铲' : '↑ 跳跃';
+        ctx.font = '800 20px "M PLUS Rounded 1c",sans-serif';
+        var cue = slide ? (o.motion ? '↔ 滑铲' : '↓ 滑铲') :
+          (o.motion ? '↔ 跳跃' : '↑ 跳跃');
         var cueY = slide ? GROUND_Y - 13 : Math.max(260, o.y - 22);
-        ctx.strokeText(cue, sx + o.w / 2, cueY);
+        var cueW = ctx.measureText(cue).width + 24;
+        var left = sx + o.w / 2 - cueW / 2, top = cueY - 25;
+        ctx.fillStyle = 'rgba(255,255,255,.9)';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(left, top, cueW, 34, 14);
+        else {
+          var right = left + cueW, bottom = top + 34;
+          ctx.moveTo(left + 14, top); ctx.arcTo(right, top, right, bottom, 14);
+          ctx.arcTo(right, bottom, left, bottom, 14); ctx.arcTo(left, bottom, left, top, 14);
+          ctx.arcTo(left, top, right, top, 14); ctx.closePath();
+        }
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(91,151,200,.36)';
+        ctx.stroke();
+        ctx.fillStyle = o.eventHazard ? '#b77b19' : slide ? '#347eb6' : '#c85f76';
         ctx.fillText(cue, sx + o.w / 2, cueY);
         ctx.restore();
       }
@@ -1554,15 +1928,14 @@
     if (player.shield || player.power.chip > 0) {
       var cy = player.y - 92;
       var rad = 108;
-      var col = player.power.chip > 0 ? '140,255,190' : '120,225,255';
-      var g2 = ctx.createRadialGradient(PLAYER_X, cy, rad * 0.55, PLAYER_X, cy, rad);
-      g2.addColorStop(0, 'rgba(' + col + ',0)');
-      g2.addColorStop(0.75, 'rgba(' + col + ',.20)');
-      g2.addColorStop(1, 'rgba(' + col + ',.55)');
-      ctx.fillStyle = g2;
+      var col = player.power.chip > 0 ? '245,190,80' : '91,164,211';
+      ctx.fillStyle = 'rgba(' + col + ',.08)';
+      ctx.strokeStyle = 'rgba(' + col + ',.5)';
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(PLAYER_X, cy, rad, 0, 6.2832);
       ctx.fill();
+      ctx.stroke();
     }
     var w = img.naturalWidth, h = img.naturalHeight;
     var dx = PLAYER_X - w / 2;
@@ -1583,9 +1956,9 @@
     var cap = glideMax();
     var w = 124, x = PLAYER_X - w / 2, y = player.y + 12;
     var left = clamp(1 - player.glideT / cap, 0, 1);
-    ctx.fillStyle = 'rgba(6,16,36,.72)';
+    ctx.fillStyle = 'rgba(255,255,255,.88)';
     ctx.fillRect(x - 3, y - 3, w + 6, 12);
-    ctx.fillStyle = left > 0.28 ? '#bff4ff' : '#ff9ad2';
+    ctx.fillStyle = left > 0.28 ? '#63b5e8' : '#ed8d9a';
     ctx.fillRect(x, y, w * left, 6);
   }
 
@@ -1618,8 +1991,8 @@
       var t = f.t / f.life;
       ctx.globalAlpha = Math.max(0, 1 - t * t);
       ctx.font = '800 ' + f.size + 'px "Baloo 2","M PLUS Rounded 1c",sans-serif';
-      ctx.lineWidth = 5;
-      ctx.strokeStyle = 'rgba(6,16,36,.85)';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(255,255,255,.95)';
       ctx.strokeText(f.txt, f.x - camX, f.y - t * 54);
       ctx.fillStyle = f.col;
       ctx.fillText(f.txt, f.x - camX, f.y - t * 54);
@@ -1630,15 +2003,15 @@
   function drawSpeedLines() {
     var t = (speed - MAX_SPEED * 0.72) / (MAX_SPEED * 0.28);
     if (t <= 0) return;
-    ctx.strokeStyle = '#bff4ff';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
     for (var i = 0; i < 16; i++) {
       var seed = i * 97.3;
       // keep the streaks in the open air above the track
       var y = 60 + ((seed * 13.7) % (GROUND_Y - 200));
       var len = 80 + ((seed * 31) % 150) * t;
       var x = (VIEW_W - ((camX * 1.7 + seed * 220) % (VIEW_W + 400)));
-      ctx.globalAlpha = clamp(t, 0, 1) * 0.34 * (0.4 + ((i % 3) / 3));
+      ctx.globalAlpha = clamp(t, 0, 1) * 0.16 * (0.4 + ((i % 3) / 3));
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(x + len, y);
@@ -1664,10 +2037,14 @@
     ctx.scale(ZOOM, ZOOM);
 
     drawWorldBackdrop();
+    drawTrackSurface();
+    drawTrackGaps();
+    drawFloatingPlatforms();
     drawSpeedLines();
     drawPickups();
     drawPowerups();
     drawObstacles();
+    drawShots();
     drawPlayer();
     drawVerbBars();
     drawParticles();
@@ -1679,7 +2056,7 @@
 
     // hit flash
     if (game.flash > 0) {
-      ctx.fillStyle = 'rgba(255,110,140,' + (game.flash * 0.5) + ')';
+      ctx.fillStyle = 'rgba(244,125,126,' + (game.flash * 0.42) + ')';
       ctx.fillRect(0, 0, VW, VH);
     }
 
@@ -1687,17 +2064,17 @@
     // from the runner, so "the new model dropped" reads as awe rather than damage
     if (player.shock > 0) {
       var k = clamp(player.shock / 0.75, 0, 1);
-      ctx.fillStyle = 'rgba(210,240,255,' + (k * 0.5) + ')';
+      ctx.fillStyle = 'rgba(255,247,218,' + (k * 0.36) + ')';
       ctx.fillRect(0, 0, VW, VH);
       var rad = (1 - k) * 900 + 60;
-      ctx.strokeStyle = 'rgba(190,235,255,' + (k * 0.85) + ')';
+      ctx.strokeStyle = 'rgba(117,183,222,' + (k * 0.72) + ')';
       ctx.lineWidth = 14 * k + 2;
       ctx.beginPath();
       ctx.arc(PLAYER_X, GROUND_Y - 110, rad, 0, 6.2832);
       ctx.stroke();
     }
     if (game.state === 'over') {
-      ctx.fillStyle = 'rgba(6,12,28,' + clamp(game.overFade * 0.55, 0, 0.55) + ')';
+      ctx.fillStyle = 'rgba(242,248,255,' + clamp(game.overFade * 0.48, 0, 0.48) + ')';
       ctx.fillRect(0, 0, VW, VH);
     }
   }
@@ -1705,14 +2082,9 @@
   // ------------------------------------------------------------------ input
   var keys = {};
   var touchStart = null;
-  // A touch is not classifiable until the finger either moves past a swipe
-  // threshold or lifts, so the jump waits out TAP_DELAY before it commits. That
-  // wait is the whole point: buffering the jump on pointerdown (the old shape)
-  // launched the runner on the very frame a down-swipe began, so the swipe had
-  // nothing left to do and a ground slide was unreachable on a phone. The cost
-  // is a held jump starting one delay late, so the thresholds below are sized to
-  // be crossed by an ordinary flick well inside the window.
-  var TAP_DELAY = 80, SWIPE_DOWN = 30, SWIPE_RIGHT = 56;
+  // The right half is an immediate jump/glide control. The left half is for
+  // swipe actions, so a downward swipe no longer has to race a delayed jump.
+  var SWIPE_DOWN = 30, SWIPE_RIGHT = 56;
   // Fingers hold the jump open for the glide without ever touching `keys`; the
   // on-screen pad does the same, and `down` is the pad's slide/stomp hold.
   var touchJumpHeld = false, padJumpHeld = false, padDown = false;
@@ -1728,6 +2100,17 @@
 
   function onKeyDown(e) {
     var k = e.code;
+    if (game.state === 'shop') {
+      if (k === 'Escape' || k === 'KeyB' || k === 'KeyP') { e.preventDefault(); if (!e.repeat) toggleShop(); }
+      if (k === 'Tab') {
+        var controls = Array.prototype.slice.call(cx.shop.querySelectorAll('button:not(:disabled)'));
+        var at = controls.indexOf(document.activeElement);
+        if (e.shiftKey && at <= 0) { e.preventDefault(); controls[controls.length - 1].focus(); }
+        else if (!e.shiftKey && (at < 0 || at === controls.length - 1)) { e.preventDefault(); controls[0].focus(); }
+      }
+      return;
+    }
+    if (k === 'KeyB') { e.preventDefault(); if (!e.repeat) toggleShop(); return; }
     if (JUMP_KEYS.indexOf(k) >= 0) {
       e.preventDefault();
       if (!keys[k]) { GameAudio.unlock(); jumpPressed(); }
@@ -1802,16 +2185,18 @@
       // from the one already tracking a swipe.
       if (touchStart) return;
       GameAudio.unlock();
+      var rightSide = e.clientX >= window.innerWidth * 0.5;
       touchStart = {
         id: e.pointerId, x: e.clientX, y: e.clientY,
-        t: performance.now(), slid: false, jumped: false, timer: 0
+        t: performance.now(), rightSide: rightSide, slid: false, jumped: false
       };
-      touchStart.timer = setTimeout(function () {
-        if (!touchStart || touchStart.slid || touchStart.jumped) return;
+      // Right-side touch starts immediately, matching the physical jump button
+      // and making short taps responsive enough for a fast runner.
+      if (rightSide) {
         touchStart.jumped = true;
-        touchJumpHeld = true;      // stays held for the glide until the finger lifts
+        touchJumpHeld = true;
         jumpPressed();
-      }, TAP_DELAY);
+      }
     });
     // `slid` means "a gesture has already consumed this touch", whichever
     // direction it went: both swipes must suppress the tap-to-jump, or every
@@ -1819,12 +2204,12 @@
     // swipe can never glide.
     stage.addEventListener('pointermove', function (e) {
       if (!touchStart || e.pointerId !== touchStart.id || touchStart.slid) return;
-      if (e.clientY - touchStart.y > SWIPE_DOWN) {
+      if (!touchStart.rightSide && e.clientY - touchStart.y > SWIPE_DOWN) {
         touchStart.slid = true;
         endTouch();
         keys['ArrowDown'] = true;
         setTimeout(function () { keys['ArrowDown'] = false; }, 520);
-      } else if (e.clientX - touchStart.x > SWIPE_RIGHT) {
+      } else if (!touchStart.rightSide && e.clientX - touchStart.x > SWIPE_RIGHT) {
         touchStart.slid = true;
         endTouch();
         tryDash();
@@ -1834,18 +2219,15 @@
       if (!touchStart || e.pointerId !== touchStart.id) return;
       var wasSlide = touchStart.slid;
       var jumped = touchStart.jumped;
-      var quick = performance.now() - touchStart.t < 260;
+      var rightSide = touchStart.rightSide;
       endTouch();
       if (game.state === 'title') { startRun(); return; }
       if (game.state === 'over') { if (game.overFade > 0.5) restart(); return; }
-      // same guard as jumpPressed: no queued jump out of a modal
       if (game.state !== 'playing' || wasSlide) return;
-      // A tap shorter than TAP_DELAY never reached the timer, so it fires here —
-      // with no hold behind it, which makes it a plain full-height hop rather
-      // than the trimmed one a keyboard tap gets. One that did reach the timer
-      // has already jumped and must not jump again; the lift only cuts it.
-      if (!jumped && quick) jumpPressed();
-      else cutJump();
+      // Right-side input already jumped on press; release trims the first arc.
+      // Left-side taps remain a compatible jump-on-release fallback.
+      if (rightSide) cutJump();
+      else if (!jumped) jumpPressed();
     });
     stage.addEventListener('pointercancel', function (e) {
       if (touchStart && e.pointerId !== touchStart.id) return;
@@ -1867,11 +2249,16 @@
     padBtns.push(el);
     el.addEventListener('pointerdown', function (e) {
       e.preventDefault();
+      if (e.button !== 0 || el._padPointer != null) return;
+      el._padPointer = e.pointerId;
+      el.setPointerCapture(e.pointerId);
       el.classList.add('held');
       fn(true);
     });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
-      el.addEventListener(t, function () {
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) {
+      el.addEventListener(t, function (e) {
+        if (el._padPointer !== e.pointerId) return;
+        el._padPointer = null;
         if (!el.classList.contains('held')) return;
         el.classList.remove('held');
         fn(false);
@@ -1883,13 +2270,22 @@
   function releasePad() {
     padJumpHeld = false;
     padDown = false;
-    for (var i = 0; i < padBtns.length; i++) padBtns[i].classList.remove('held');
+    for (var i = 0; i < padBtns.length; i++) {
+      var el = padBtns[i], id = el._padPointer;
+      el._padPointer = null;
+      if (id != null && el.hasPointerCapture(id)) el.releasePointerCapture(id);
+      el.classList.remove('held');
+    }
   }
 
   function bindPad() {
     var pad = document.getElementById('pad');
     if (!pad) return;
     hud.pad = pad;
+    // Some mobile browsers still raise selection/callout menus on button text.
+    ['contextmenu', 'selectstart', 'dragstart', 'touchstart'].forEach(function (type) {
+      pad.addEventListener(type, function (e) { e.preventDefault(); }, { passive: false });
+    });
     hud.padDash = document.getElementById('padDash');
 
     // Same shape as a keyboard tap: press jumps, holding keeps jumpHeld() true
@@ -1909,15 +2305,10 @@
     if (hud.padDash) {
       // Tap, not hold: still registered so releasePad can clear its `held`
       // styling when a run ends mid-press.
-      padBtns.push(hud.padDash);
-      hud.padDash.addEventListener('pointerdown', function (e) {
-        e.preventDefault();
+      wireHold(hud.padDash, function (on) {
+        if (!on) return;
         GameAudio.unlock();
-        hud.padDash.classList.add('held');
         tryDash();
-      });
-      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
-        hud.padDash.addEventListener(t, function () { hud.padDash.classList.remove('held'); });
       });
     }
   }
@@ -1965,6 +2356,7 @@
     hud.livesRow = document.getElementById('livesRow');
     hud.combo = document.getElementById('combo');
     hud.comboNum = document.getElementById('comboNum');
+    hud.comboTxt = document.getElementById('comboTxt');
     hud.comboRing = document.getElementById('comboRing');
     hud.powerups = document.getElementById('powerups');
     hud.dashPips = document.getElementById('dashPips');
@@ -1983,6 +2375,9 @@
     try { game.best = parseInt(localStorage.getItem('ds_whale_run_best') || '0', 10) || 0; }
     catch (e) { game.best = 0; }
   }
+
+  /** Thousands separator — a five-figure score is unreadable as a solid block. */
+  function groupNum(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
   function saveBest(v) {
     try { localStorage.setItem('ds_whale_run_best', String(v)); } catch (e) { }
   }
@@ -2001,7 +2396,7 @@
     for (var i = 0; i < n; i++) {
       var im = document.createElement('img');
       im.className = 'life';
-      im.src = 'assets/ui/heart.png';
+      im.src = assetURL('ui/heart');
       im.dataset.i = i;
       hud.livesRow.appendChild(im);
     }
@@ -2012,17 +2407,26 @@
     // the row itself is the record of how many hearts exist; grow it on demand
     if (game.lives > els.length) addLifeHearts(game.lives - els.length);
     for (var i = 0; i < els.length; i++) {
-      els[i].classList.toggle('lost', i >= game.lives);
+      var lost = i >= game.lives;
+      els[i].classList.toggle('lost', lost);
+      var heartSrc = lost ? assetURL('ui/heart_empty') : assetURL('ui/heart');
+      if (els[i].getAttribute('src') !== heartSrc) els[i].src = heartSrc;
     }
   }
 
-  function comboMult() { return Math.min(8, 1 + Math.floor(game.combo / 5)); }
+  var MAX_COMBO_MULT = 8;
+  function comboDuration() { return COMBO_TIME + addOf('comboAdd'); }
+  function comboMult() { return Math.min(MAX_COMBO_MULT, 1 + Math.floor(game.combo / 5)); }
 
-  /** Extend the combo by one pickup or kill and keep the peak for the summary. */
+  /** Extend the combo by one collectible and keep the peak for the summary. */
   function bumpCombo() {
     game.combo++;
-    game.comboT = COMBO_TIME + addOf('comboAdd');
+    game.comboT = comboDuration();
     if (game.combo > game.maxCombo) game.maxCombo = game.combo;
+  }
+
+  function comboLabel() {
+    return game.combo > 0 ? '白饭 ×' + comboMult() + ' · ' + game.combo + '连' : '白饭连击';
   }
 
   /**
@@ -2047,17 +2451,22 @@
     // innerHTML with the drawn trophy keeps the badge in the same flat style as
     // the rest of the HUD; game.best is always a parseInt result, never a string.
     hud.titleBest.innerHTML = game.best > 0
-      ? '<img src="assets/ui/badge_trophy.png" alt=""><span>历史最佳：' + game.best + '</span>'
+      ? '<img src="' + assetURL('ui/badge_trophy') + '" alt=""><span>历史最佳：' + groupNum(game.best) + '</span>'
       : '';
     hud.combo.classList.remove('on');
+    hud.comboTxt.textContent = '白饭连击';
     hud.powerups.innerHTML = '';
     hud.dashFx.style.opacity = 0;
     resetWorld();
+    enterZone(zoneAt(), true);
     GameAudio.stopBgm();
   }
 
   function resetWorld() {
     obstacles.length = 0; pickups.length = 0; powerups.length = 0;
+    shots.length = 0; recentPatterns.length = 0; recentObstacleKinds.length = 0; pickupBag.length = 0;
+    platforms.length = 0; trackGaps.length = 0;
+    pickupArtIndex = 0;
     riskLines = {}; riskLineId = 0;
     particles.length = 0; floats.length = 0;
     camX = 0; dist = 0; speed = BASE_SPEED; worldT = 0;
@@ -2078,7 +2487,7 @@
     hints.length = 0; seenHints = {};
     clearMods();
     player.shock = 0;
-    player.y = GROUND_Y; player.vy = 0; player.onGround = true; player.gravMul = 1;
+    player.y = GROUND_Y; player.groundY = GROUND_Y; player.vy = 0; player.onGround = true; player.gravMul = 1;
     player.riseMul = 1; player.fallMul = FALL_MUL;
     player.cuttable = false;
     player.jumps = 0; player.sliding = false; player.slideT = 0;
@@ -2093,6 +2502,7 @@
     player.power = zeroPowers();
     game.shake = 0; game.flash = 0; game.hitstop = 0; game.overFade = 0;
     game.score = 0; game.rice = 0; game.lives = START_LIVES;
+    game.lastHit = null;
     game.combo = 0; game.comboT = 0; game.maxCombo = 0;
     buildLives();
     updateHud();
@@ -2103,6 +2513,7 @@
     cx.shop.classList.add('hide');
     setSelecting(false);
     game.state = 'playing';
+    enterZone(zoneAt());
     hud.cardTitle.style.display = 'none';
     hud.cardOver.style.display = 'none';
     hud.overlay.classList.add('hide');
@@ -2140,7 +2551,7 @@
       el.id = 'cardPause';
       el.innerHTML =
         '<div class="logoWrap" style="width:104px;height:104px">' +
-        '<img src="assets/ui/emblem.png" alt="" style="width:96px;height:96px;position:relative">' +
+        '<img src="' + assetURL('ui/emblem') + '" alt="" style="width:96px;height:96px;position:relative">' +
         '</div>' +
         '<div id="goTitle" class="pauseTitle" style="margin-top:14px">已暂停</div>' +
         '<div class="sub" style="margin-top:6px">鲸鱼娘正在补充白饭…</div>' +
@@ -2153,9 +2564,9 @@
         '</div>' +
         '<div class="row">' +
         '<button class="legbtn primary" id="btnResume">' +
-        '<img src="assets/ui/icon_play.png" alt="">继续</button>' +
+        '<img src="' + assetURL('ui/icon_play') + '" alt="">继续</button>' +
         '<button class="legbtn" id="btnQuit">' +
-        '<img src="assets/ui/icon_home.png" alt="">回到标题</button>' +
+        '<img src="' + assetURL('ui/icon_home') + '" alt="">回到标题</button>' +
         '</div>';
       hud.overlay.appendChild(el);
       document.getElementById('btnResume').addEventListener('click', function () { GameAudio.sfx('ui'); setPause(false); });
@@ -2163,6 +2574,16 @@
     }
     el.style.display = on ? '' : 'none';
     hud.overlay.classList.toggle('hide', !on);
+  }
+
+  function deathAdvice(hit) {
+    if (!hit || hit.kind === 'gap') return '掉进跑道间隙 · 提前起跳，连续跳上云岛';
+    if (hit.kind === 'drone') return '撞上低空障碍 · 按住 ↓ 滑铲通过';
+    if (hit.airborne && hit.vy > 0 && hit.kind !== 'turret' && hit.kind !== 'gate' && hit.kind !== 'sentry') {
+      return '下落时撞到障碍 · 可按住 ↓ 尝试下砸';
+    }
+    if (hit.kind === 'turret' || hit.kind === 'gate' || hit.kind === 'sentry') return '高墙型障碍 · 提前起跳并保留二段跳';
+    return '地面障碍 · 提前起跳，或用冲刺撞碎小型障碍';
   }
 
   function gameOver() {
@@ -2178,12 +2599,30 @@
     var sc = Math.floor(game.score);
     var isBest = sc > game.best;
     if (isBest) { game.best = sc; saveBest(sc); }
-    document.getElementById('sScore').textContent = sc;
+    document.getElementById('sScore').textContent = groupNum(sc);
     document.getElementById('sRice').textContent = game.rice;
     document.getElementById('sDist').textContent = Math.floor(dist / 30) + ' m';
-    document.getElementById('sCombo').textContent = game.maxCombo;
-    document.getElementById('sBest').textContent = game.best;
-    document.getElementById('newBest').classList.toggle('hide', !isBest);
+    document.getElementById('sCombo').textContent = 'x' + Math.min(MAX_COMBO_MULT, 1 + Math.floor(game.maxCombo / 5));
+    var reason = document.getElementById('deathReason');
+    if (reason) {
+      var hit = game.lastHit || { kind: 'gap' };
+      var names = { patrol: '巡逻 Bug', crystals: '错误晶体', mine: '缓存地雷', drone: '低空验证条', turret: '炮台', gate: '闸门', sentry: '哨塔', gap: '跑道间隙' };
+      reason.innerHTML = '<b>本次失误：' + (names[hit.kind] || hit.kind) + '</b><span>' + deathAdvice(hit) + '</span>';
+    }
+    // The line under the score always says something — a record fell, or how far
+    // short it fell — so the card keeps its height either way.
+    var elBest = document.getElementById('bestLine');
+    var gap = game.best - sc;
+    if (isBest) {
+      elBest.className = 'rec';
+      elBest.innerHTML = '<img src="' + assetURL('ui/badge_trophy') + '" alt="">新纪录！';
+    } else if (gap > 0) {
+      elBest.className = 'near';
+      elBest.innerHTML = '<img src="' + assetURL('ui/badge_trophy') + '" alt="">距历史最佳<b>' + groupNum(gap) + '</b>';
+    } else {
+      elBest.className = 'near';
+      elBest.innerHTML = '<img src="' + assetURL('ui/badge_trophy') + '" alt="">追平历史最佳';
+    }
 
     // Where the run ended and the current-run upgrades.
     var z = ZONES[zoneIdx];
@@ -2210,18 +2649,14 @@
     if (o.nearMiss || o.dead || player.invuln > 0 || player.power.chip > 0 ||
         player.dashT > 0 || game.state !== 'playing') return;
     var pb = playerBox();
-    var ob = {
-      x: o.box.x,
-      y: o.box.y + (o.bob ? Math.sin(worldT * 2.2 + o.phase) * o.bob : 0),
-      w: o.box.w, h: o.box.h
-    };
+    var ob = obstacleBox(o);
     var horizontal = Math.max(0, Math.max(ob.x - (pb.x + pb.w), pb.x - (ob.x + ob.w)));
     var vertical = Math.max(0, Math.max(ob.y - (pb.y + pb.h), pb.y - (ob.y + ob.h)));
     if (horizontal > 92 || vertical > 55 || aabb(pb, ob)) return;
     o.nearMiss = true;
     progressGoal('nearMiss');
     game.score += 18 * scoreMul();
-    game.comboT = Math.max(game.comboT, COMBO_TIME * 0.55 + addOf('comboAdd'));
+    game.comboT = Math.max(game.comboT, comboDuration() * 0.55);
     popText(camX + PLAYER_X, player.y - 188, '险过!', o.bob ? '#62e8ff' : '#ffd166', 24);
     burst(camX + PLAYER_X, player.y - 92, {
       n: 6, col: o.bob ? ['#62e8ff', '#bff4ff'] : ['#ffd166', '#ff9ad2'],
@@ -2232,13 +2667,10 @@
 
   function damage(o) {
     if (player.invuln > 0 || game.state !== 'playing') return;
-    // GPU dash and the dash verb both plough straight through. Only breakable
-    // obstacles though: the tall must-jump hazards (token / tower) still stop a
-    // dash, which is what keeps the dash from being a free pass through the
-    // level. The grace window covers the frames right after the burst ends, so
-    // the obstacle the player was mid-way through breaking never lands a hit.
-    if (player.power.chip > 0 ||
-        ((player.dashT > 0 || player.dashGrace > 0) && breakable(o))) {
+    // GPU dash and the dash verb both plough through breakable obstacles. The
+    // grace window covers the frames after the burst ends.
+    if (o.kind !== 'gap' && (player.power.chip > 0 ||
+        ((player.dashT > 0 || player.dashGrace > 0) && breakable(o)))) {
       shatter(o, player.power.chip > 0 ? null : { label: '冲刺撞碎!', labelCol: '#8affc1' });
       game.score += DASH_SCORE * scoreMul();
       game.rice += riceGain(1, mulOf('riceMul'));
@@ -2292,6 +2724,7 @@
         delete riskLines[p.riskLine];
       }
     }
+    var previousMult = comboMult();
     bumpCombo();
     var mult = comboMult();
     var gain = Math.round((big ? 50 : 10) * mult * mulOf('riceMul') * scoreMul());
@@ -2299,9 +2732,9 @@
     game.rice += riceGain(big ? 5 : 1, mulOf('riceMul'));
 
     GameAudio.sfx(big ? 'bigrice' : 'coin', big ? 0 : game.combo);
-    if (game.combo > 0 && game.combo % 5 === 0) {
-      GameAudio.sfx('combo', game.combo / 5);
-      popText(p.x, p.y - 40, 'x' + comboMult() + ' 连击!', '#ffd166', 34);
+    if (mult > previousMult) {
+      GameAudio.sfx('combo', mult - 1);
+      popText(p.x, p.y - 40, 'x' + mult + ' 连击!', '#ffd166', 34);
     }
 
     burst(p.x, p.y, {
@@ -2310,9 +2743,11 @@
     });
     popText(p.x, p.y - 16, '+' + gain, big ? '#ffd166' : '#ffffff', big ? 28 : 22);
 
-    hud.riceCount.classList.remove('pop');
-    void hud.riceCount.offsetWidth;
-    hud.riceCount.classList.add('pop');
+    if (!mobileRender) {
+      hud.riceCount.classList.remove('pop');
+      void hud.riceCount.offsetWidth;
+      hud.riceCount.classList.add('pop');
+    }
   }
 
   function collectPower(p) {
@@ -2399,9 +2834,8 @@
 
     // An event that fires a fair distance ahead has to actually spawn: the next
     // generation pass happens below, so the wall lands in the queue naturally.
-    if (dist >= genEvent.next) {
+    if (dist >= genEvent.next && fireEvent()) {
       genEvent.next = dist + nextEventGap();
-      fireEvent();
       updateShopNotice();
     }
 
@@ -2431,6 +2865,13 @@
     // jump buffering / coyote
     if (player.buffer > 0) player.buffer -= dt;
     if (player.coyote > 0) player.coyote -= dt;
+    if (player.onGround && !hasTrackSupportAt(camX + PLAYER_X, player.groundY)) {
+      // Leaving the edge starts the fall immediately, while the short coyote
+      // window still lets a late jump save the run.
+      player.onGround = false;
+      player.coyote = COYOTE;
+      player.sliding = false;
+    }
 
     // slide state. Dashing overrides the slide: a dash low to the ground still
     // covers more than a slide does, so keeping the slide box would only shrink
@@ -2515,9 +2956,10 @@
       // the reduced gravity would still accumulate into a slam on a long fall.
       if (player.gliding) player.vy = Math.min(player.vy, GLIDE_VMAX * k);
       player.y += player.vy * dt;
-      if (player.y >= GROUND_Y) {
+      var landedAt = landingSurface(prevFoot, player.y, camX + PLAYER_X);
+      if (landedAt !== null) {
         var impact = player.vy;
-        player.y = GROUND_Y;
+        player.y = landedAt; player.groundY = landedAt;
         player.vy = 0;
         player.onGround = true;
         player.jumps = 0;
@@ -2532,9 +2974,11 @@
         player.glideT = 0;
         if (impact > 260) {
           GameAudio.sfx('land');
-          burst(camX + PLAYER_X, GROUND_Y, { n: impact > 700 ? 14 : 8, col: ['#cdf3ff', '#9fe0ff', '#ffffff'], sp0: 50, sp1: impact > 700 ? 260 : 150, dir: Math.PI / 2, spread: 1.3, r0: 2, r1: 6, g: 500, l0: .18, l1: .45 });
+          burst(camX + PLAYER_X, landedAt, { n: impact > 700 ? 14 : 8, col: ['#cdf3ff', '#9fe0ff', '#ffffff'], sp0: 50, sp1: impact > 700 ? 260 : 150, dir: Math.PI / 2, spread: 1.3, r0: 2, r1: 6, g: 500, l0: .18, l1: .45 });
           if (impact > 900) shake(5);
         }
+      } else if (player.y > GROUND_Y + 185) {
+        recoverFromGap();
       }
     } else {
       player.coyote = COYOTE;
@@ -2542,6 +2986,7 @@
 
     // ---- level
     extendLevel();
+    pruneTrackFeatures();
     updateHints();
 
     // ---- powerup timers
@@ -2557,16 +3002,13 @@
     }
 
     // ---- collisions
+    updateMovingHazards(dt);
     var pb = playerBox();
 
     for (var i = obstacles.length - 1; i >= 0; i--) {
       var o = obstacles[i];
       if (o.dead || o.x - camX < -260) { obstacles.splice(i, 1); continue; }
-      var ob = {
-        x: o.box.x,
-        y: o.box.y + (o.bob ? Math.sin(worldT * 2.2 + o.phase) * o.bob : 0),
-        w: o.box.w, h: o.box.h
-      };
+      var ob = obstacleBox(o);
       if (aabb(pb, ob)) {
         // A stomp is resolved before damage: landing on a lid is a reward, and
         // `travel` (not `speed`) is what the near-miss window below must use,
@@ -2606,7 +3048,7 @@
         }
       }
       var cdx = px - p.x, cdy = (player.y - 86) - p.y;
-      if (cdx * cdx + cdy * cdy < (p.r + 40) * (p.r + 40)) collectRice(p);
+      if (cdx * cdx + cdy * cdy < (p.r + RICE_REACH) * (p.r + RICE_REACH)) collectRice(p);
     }
 
     for (var m = powerups.length - 1; m >= 0; m--) {
@@ -2618,7 +3060,7 @@
         continue;
       }
       var qdx = px - q.x, qdy = (player.y - 90) - q.y;
-      if (qdx * qdx + qdy * qdy < (q.r + 38) * (q.r + 38)) collectPower(q);
+      if (qdx * qdx + qdy * qdy < (q.r + POWER_REACH) * (q.r + POWER_REACH)) collectPower(q);
     }
 
     decayFx(dt);
@@ -2659,13 +3101,19 @@
     if (lastHud.score !== sc) { hud.score.textContent = sc; lastHud.score = sc; }
     if (lastHud.rice !== game.rice) { hud.riceCount.textContent = game.rice; lastHud.rice = game.rice; }
 
-    var showCombo = game.combo >= 5 && game.comboT > 0 && game.state === 'playing';
+    var showCombo = game.combo > 0 && game.comboT > 0 && game.state === 'playing';
     if (lastHud.comboOn !== showCombo) {
       hud.combo.classList.toggle('on', showCombo);
       lastHud.comboOn = showCombo;
+      if (!showCombo) lastHud.comboText = '';
     }
     if (showCombo) {
       var label = 'x' + comboMult();
+      var sublabel = comboLabel();
+      if (lastHud.comboText !== sublabel) {
+        hud.comboTxt.textContent = sublabel;
+        lastHud.comboText = sublabel;
+      }
       if (lastHud.comboLabel !== label) {
         hud.comboNum.textContent = label;
         hud.comboNum.classList.remove('hit');
@@ -2673,8 +3121,9 @@
         hud.comboNum.classList.add('hit');
         lastHud.comboLabel = label;
       }
-      hud.comboRing.style.opacity = String(0.15 + (game.comboT / COMBO_TIME) * 0.5);
-      var rs = 0.55 + (game.comboT / COMBO_TIME) * 0.6;
+      var comboRatio = clamp(game.comboT / comboDuration(), 0, 1);
+      hud.comboRing.style.opacity = String(0.15 + comboRatio * 0.5);
+      var rs = 0.55 + comboRatio * 0.6;
       hud.comboRing.style.transform = 'scale(' + rs.toFixed(2) + ')';
     }
 
@@ -2692,9 +3141,10 @@
         el.className = 'panel pw ' + w.k;
         el.dataset.k = w.k;
         el.innerHTML = '<img src="' + (powerIconURL[w.k] || '') +
-          '" alt=""><div class="bar"><i></i><span></span></div>';
+          '" alt=""><div class="pwBody"><span class="pwName"></span>' +
+          '<div class="bar"><i></i></div></div>';
         // caption from the content table so adding a powerup never needs a CSS edit
-        el.querySelector('.bar span').textContent = POWER_INFO[w.k].label;
+        el.querySelector('.pwName').textContent = POWER_INFO[w.k].label;
         hud.powerups.appendChild(el);
       });
       lastHud.pwSig = sig;
@@ -2739,6 +3189,12 @@
 
   function buildContentHud() {
     var hudEl = document.getElementById('hud');
+    document.getElementById('topleft').appendChild(document.getElementById('livesRow'));
+    document.getElementById('topright').insertBefore(document.getElementById('riceWrap'), document.getElementById('btns'));
+    hudEl.appendChild(document.getElementById('dashHud'));
+    hudEl.appendChild(document.getElementById('powerups'));
+    document.getElementById('btnShop').title = '白饭商店 · 暂停跑道 (B)';
+    document.getElementById('btnShop').setAttribute('aria-label', '打开白饭商店，暂停游戏，快捷键 B');
 
     // zone plaque, under the score panel
     cx.zone = document.createElement('div');
@@ -2761,12 +3217,18 @@
     cx.shop = document.createElement('div');
     cx.shop.id = 'shopPanel';
     cx.shop.className = 'hide';
+    cx.shop.setAttribute('role', 'dialog');
+    cx.shop.setAttribute('aria-modal', 'true');
+    cx.shop.setAttribute('aria-labelledby', 'shopTitle');
     cx.shop.innerHTML =
-      '<h2><img src="assets/ui/icon_shop.png" alt="">白饭技能商店</h2>' +
-      '<div id="shopBalance"></div><div id="shopList"></div>' +
+      '<div class="shopWindow"><header class="shopHeader"><div><h2 id="shopTitle"><img src="' + assetURL('ui/icon_shop') + '" alt="">白饭补给站</h2><p>选择本局升级 · 游戏已暂停</p></div>' +
+      '<div id="shopBalance"></div><button id="shopDismiss" aria-label="关闭商店，继续游戏">×</button></header><div id="shopList"></div>' +
+      '<footer class="shopFooter"><div id="shopStatus" role="status" aria-live="polite"></div>' +
       '<button class="legbtn primary" id="btnShopClose">' +
-      '<img src="assets/ui/icon_play.png" alt="">继续跑</button>';
-    hudEl.appendChild(cx.shop);
+      '<img src="' + assetURL('ui/icon_play') + '" alt="">返回跑道 <small>1 秒保护 · B / Esc</small></button></footer></div>';
+    // Keep the dialog outside the scaled game stage: text and touch targets
+    // retain their real CSS sizes even when the 1280px runway is shrunk.
+    document.body.appendChild(cx.shop);
 
     cx.zoneTag = document.getElementById('zoneTag');
     cx.zoneName = document.getElementById('zoneName');
@@ -2780,10 +3242,12 @@
     cx.evTimerBar = cx.evTimer.querySelector('i');
     cx.shopBalance = document.getElementById('shopBalance');
     cx.shopList = document.getElementById('shopList');
+    cx.shopStatus = document.getElementById('shopStatus');
     document.getElementById('btnShopClose').addEventListener('click', toggleShop);
+    document.getElementById('shopDismiss').addEventListener('click', toggleShop);
   }
 
-  function mascotSrc(id) { return 'assets/mascot/' + id + '.png'; }
+  function mascotSrc(id) { return assetURL('mascot/' + id); }
 
   function showEventBanner(ev) {
     var group = ev.group || eventGroup(ev);
@@ -2840,9 +3304,8 @@
     var m = !GameAudio.isMuted();
     GameAudio.setMuted(m);
     var b = document.getElementById('btnSound');
-    var icon = document.getElementById('soundIcon');
-    if (icon) icon.src = m ? 'assets/ui/icon_mute.png' : 'assets/ui/icon_sound.png';
     b.classList.toggle('off', m);
+    b.setAttribute('aria-pressed', String(m));
     if (!m) GameAudio.sfx('ui');
   }
 
@@ -2852,7 +3315,7 @@
     var pad = 12;
     var k = Math.min((window.innerWidth - pad) / VW, (window.innerHeight - pad) / VH);
     stage.style.transform = 'scale(' + k + ')';
-    void stage.offsetWidth;
+    resizeCanvas(k);
     // The rotate card covers the whole cabinet on a portrait phone, and a run
     // left going behind it would just kill the player for turning their wrist.
     // #rotate decides whether that card is up (the breakpoint lives in its media
@@ -2864,14 +3327,24 @@
 
   function setupCanvas() {
     cv = document.getElementById('cv');
-    dpr = Math.min(2, window.devicePixelRatio || 1);
-    cv.width = VW * dpr;
-    cv.height = VH * dpr;
     cv.style.width = VW + 'px';
     cv.style.height = VH + 'px';
     ctx = cv.getContext('2d');
+  }
+
+  function resizeCanvas(scale) {
+    vignette = null;
+    // Match the displayed stage, with a mobile fill-rate budget. Physics stays
+    // in the same 1280x720 coordinate system and keeps its 120 Hz timestep.
+    dpr = mobileRender
+      ? Math.max(0.5, Math.min(1.25, scale * (window.devicePixelRatio || 1)))
+      : Math.min(2, window.devicePixelRatio || 1);
+    var width = Math.round(VW * dpr), height = Math.round(VH * dpr);
+    if (cv.width === width && cv.height === height) return;
+    cv.width = width;
+    cv.height = height;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.imageSmoothingQuality = 'high';
+    ctx.imageSmoothingQuality = mobileRender ? 'low' : 'high';
   }
 
   var acc = 0, lastT = 0;
@@ -2930,6 +3403,13 @@
     document.getElementById('btnSound').addEventListener('click', function () { toggleMute(); });
     document.getElementById('btnAgain').addEventListener('click', function () { GameAudio.sfx('ui'); restart(); });
     document.getElementById('btnHome').addEventListener('click', function () { GameAudio.sfx('ui'); showTitle(); });
+    // The only title-card control that leaves the page. A link keeps focus after
+    // the click, and Enter is a documented way to start a run, so without the
+    // blur the next Enter would open the video again on top of starting the game
+    // (Space is already safe: onKeyDown preventDefaults every JUMP_KEY).
+    document.getElementById('btnBili').addEventListener('click', function () {
+      GameAudio.sfx('ui'); this.blur();
+    });
 
     // Fullscreen exists on desktop browsers and Android; iOS Safari has no API
     // for it at all, so the controls are dropped rather than left as dead buttons
@@ -2965,38 +3445,42 @@
     function showLoadError(err) {
       document.getElementById('loading').innerHTML =
         '<div style="max-width:640px;text-align:center;line-height:1.7">' +
-        '<div style="font-size:22px;color:#ff9ad2;margin-bottom:10px">素材加载失败</div>' +
-        '<div style="font-size:15px;color:#a9d7f5">' + (err && err.message ? err.message : '') + '</div>' +
-        '<div style="font-size:14px;color:#7fa5c4;margin-top:14px">如果是用 file:// 直接打开的，' +
-        '请改用本地服务器：<br><code style="color:#8ff3ff">python -m http.server 8000</code> ' +
-        '然后访问 <code style="color:#8ff3ff">http://localhost:8000</code></div>' +
+        '<div style="font-size:22px;color:#c66d7e;margin-bottom:10px">素材加载失败</div>' +
+        '<div style="font-size:15px;color:#607c96">' + (err && err.message ? err.message : '') + '</div>' +
+        '<div style="font-size:14px;color:#71869a;margin-top:14px">如果是用 file:// 直接打开的，' +
+        '请改用本地服务器：<br><code style="color:#4d91c3">python -m http.server 8000</code> ' +
+        '然后访问 <code style="color:#4d91c3">http://localhost:8000</code></div>' +
         '</div>';
     }
 
     function onReady() {
-      hud.emblem.src = 'assets/ui/emblem.png';
-      hud.riceIcon.src = 'assets/item/rice.png';
-      // 超频 has no art of its own. It is the GPU chip icon washed gold, which is
-      // both cheaper than a new PNG and honest about what it does: the same
-      // powerup family, a different effect. Note this must happen BEFORE the
-      // first frame — an in-world pickup whose image is undefined throws in
-      // drawPowerups on every single frame.
-      IMG['item/overclock'] = tint(IMG['item/chip'], '255,209,102', 0.62);
+      hud.emblem.src = assetURL('ui/emblem');
+      hud.riceIcon.src = assetURL('item/rice');
+      // Keep the run's special effect icon distinct from the base GPU chip.
       POWERS.forEach(function (pk) {
         var im = IMG['item/' + pk];
-        powerIconURL[pk] = im && im.toDataURL ? im.toDataURL() : 'assets/item/' + pk + '.png';
+        powerIconURL[pk] = im && im.toDataURL ? im.toDataURL() : assetURL('item/' + pk);
       });
-      // distant things wash out toward the sky colour; near things just darken
-      tinted['bg/far'] = tint(IMG['bg/far'], '46,96,168', 0.34);
-      tinted['bg/mid'] = tint(IMG['bg/mid'], '10,26,60', 0.30);
-      // Wash the zone scenery toward the sky the same way, so a zone backdrop
+      var island = IMG['platform/cloud_island'];
+      if (island) {
+        platformSprite = document.createElement('canvas');
+        platformSprite.width = 360;
+        platformSprite.height = Math.round(360 * island.naturalHeight / island.naturalWidth);
+        var pg = platformSprite.getContext('2d');
+        pg.imageSmoothingQuality = 'high';
+        pg.drawImage(island, 0, 0, platformSprite.width, platformSprite.height);
+      }
+      // Give the parallax planes a faint sky-blue wash to keep them airy.
+      tinted['bg/far'] = tint(IMG['bg/far'], '192,225,246', 0.10);
+      tinted['bg/mid'] = tint(IMG['bg/mid'], '220,240,251', 0.08);
+      // Wash each zone scenery toward the sky the same way, so its backdrop
       // sits in the same visual depth as the original art it replaces.
       ZONES.forEach(function (z) {
         if (!z.layers) return;
         var far = IMG['bg/zones/' + z.layers + '/far'];
         var mid = IMG['bg/zones/' + z.layers + '/mid'];
-        if (far) tinted['bg/zones/' + z.layers + '/far'] = tint(far, '46,96,168', 0.30);
-        if (mid) tinted['bg/zones/' + z.layers + '/mid'] = tint(mid, '10,26,60', 0.26);
+        if (far) tinted['bg/zones/' + z.layers + '/far'] = tint(far, '192,225,246', 0.1);
+        if (mid) tinted['bg/zones/' + z.layers + '/mid'] = tint(mid, '220,240,251', 0.08);
       });
       auditContentTags();
       auditZoneArt();
@@ -3004,6 +3488,10 @@
       showTitle();
       requestAnimationFrame(frame);
     }
+
+    // Before the preloader, so the shell's requests and loadAll()'s collapse
+    // into one set instead of two.
+    bindShellAssets();
 
     loadManifest()
       .then(function () { loadAll(onReady, showLoadError); })
@@ -3016,7 +3504,8 @@
     state: function () { return game; },
     player: function () { return player; },
     world: function () {
-      return { camX: camX, speed: speed, dist: dist, obstacles: obstacles, pickups: pickups, powerups: powerups };
+      return { camX: camX, speed: speed, dist: dist, obstacles: obstacles, pickups: pickups,
+        powerups: powerups, platforms: platforms, gaps: trackGaps, zone:zoneIdx, time:worldT, transition:zoneTransition.t, tier:tier(), event:eventDef };
     },
     box: playerBox,
     lastHit: function () { return game.lastHit; },

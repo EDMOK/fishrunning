@@ -11,7 +11,7 @@ assets/manifest.json, then checks three things:
      double jump can never carry the player into the next obstacle;
   3. every multi-obstacle pattern fits inside a single jump arc.
 
-Keep the constants here in sync when tuning. Run after tools/build_assets.py.
+Keep the constants here in sync when tuning. Run after tools/build_art.py.
 """
 import json
 import math
@@ -36,28 +36,30 @@ GAP_PAD = 150.0
 # tier 0, which leaves a +2px slack that no human should have to rely on.
 GAP_FLOOR = 0.88
 ZOOM = 0.78
-TIER_START = [0, 3200, 8500, 16000, 26000]
+TIER_START = [0, 2200, 5200, 9800, 17000]
 # The speed at which each obstacle can FIRST appear, which is its tightest case.
-MIN_TIER = {'bug': 0, 'spike': 0, 'usb': 0, 'error': 2,
-            'server': 2, 'token': 3, 'tower': 3}
+# Mirrors OBS_MIN_TIER in src/game.js.
+MIN_TIER = {'patrol': 0, 'crystals': 0, 'mine': 0,
+            'drone': 2, 'turret': 2,
+            'gate': 3, 'sentry': 3}
 
 # The obstacle pools, straight from src/game.js. Section 1b uses these instead of
 # MIN_TIER, because the pools are what actually decide what a pattern may pick.
-TIER1 = ['bug', 'spike', 'usb']
-TIER2 = ['bug', 'spike', 'usb', 'error', 'server']
-TIER3 = ['bug', 'spike', 'usb', 'error', 'server', 'token', 'tower']
+TIER1 = ['patrol', 'crystals', 'mine']
+TIER2 = TIER1 + ['drone']
+TIER3 = TIER2 + ['turret', 'gate', 'sentry']
 
 
 def pool_for_tier(t):
-    """Mirror of obstaclePool() in src/game.js."""
-    if t <= 0:
+    """Mirror of legalAt() in src/game.js."""
+    if t <= 1:
         return TIER1
-    if t <= 2:
+    if t == 2:
         return TIER2
     return TIER3
 # Tier at which each multi-obstacle pattern first appears. Must mirror the `min`
 # field of the same pattern in src/game.js PATTERNS.
-PATTERN_TIER = {'slide + wall': 2, 'stomp chain': 2, 'dash lane': 3, 'late pair': 4}
+PATTERN_TIER = {'slide-then-wall': 2, 'stomp-chain': 2, 'dash-lane': 3, 'pair': 4}
 
 # ---- glide (src/game.js) ---------------------------------------------------
 # Holding jump past the apex cuts the descent gravity and caps the fall speed,
@@ -148,11 +150,8 @@ def main():
               f"{bu:8.1f} {bu - w:+8.1f}  {'ok' if good else 'FAIL'}")
 
     print('\n=== 1b. clearance at the EARLIEST tier each obstacle can really spawn ===')
-    # MIN_TIER is the declared floor, but the tier POOLS are what actually decide
-    # what a pattern may pick: obstaclePool(1) hands out TIER2, so error and
-    # server can appear from tier 1 (386 px/s) even though MIN_TIER says 2. That
-    # makes them the tightest cases in the game, and nothing above would catch it
-    # if a pool ever grew. This walks the pools exactly as src/game.js does.
+    # MIN_TIER is the declared floor, but the tier pools are what actually decide
+    # what a pattern may pick. This walks the pools exactly as src/game.js does.
     print(f"  {'obstacle':10s} {'pool from tier':>15s} {'speed':>6s} {'budget':>8s} {'margin':>8s}")
     for k in sorted(ART):
         first = next(t for t in range(5) if k in pool_for_tier(t))
@@ -165,6 +164,17 @@ def main():
                          f'{w:.0f}px with only {bu:.1f}px available')
         print(f"  {k:10s} {first:15d} {sp:6.0f} {bu:8.1f} {bu - w:+8.1f}  "
               f"{'ok' if good else 'FAIL'}")
+
+    print('\n=== 1c. moving mine travel fits a first jump ===')
+    # Include the full side-to-side range, as clustersOf() does in the engine.
+    for label, first, motion in [('moving-mine', 2, 38), ('cacheflush event', 1, 32)]:
+        span = BOX['mine'][0] + 2 * motion
+        bu = budget(BOX['mine'][1], speed_at(TIER_START[first]))
+        good = span <= bu
+        if not good:
+            fails.append(f'{label}: moving envelope {span:.0f}px > jump budget {bu:.0f}px')
+        print(f'  {label:16s} span {span:.0f}px  budget {bu:.1f}px  '
+              f'margin {bu - span:+.1f}px  {"ok" if good else "FAIL"}')
 
     print('\n=== 2. worst-case double jump vs the gap between patterns ===')
     dj_rise_g = GRAVITY * DJ_RISE_G
@@ -245,12 +255,12 @@ def main():
     # than CHAIN_GAP are split into separate clusters by clustersOf(), and each
     # span below is measured exactly the way the runtime audit measures it.
     pats = [
-        # The floating 'error' here is excluded by clustersOf() at runtime (it is
+        # The floating 'drone' here is excluded by clustersOf() at runtime (it is
         # a slide obstacle); keeping it in is the conservative direction.
-        ('slide + wall', ['error', 'spike'], [0, 620]),
-        ('stomp chain', ['bug', 'bug', 'bug'], [0, 320, 640]),
-        ('dash lane', ['usb'], [0]),
-        ('late pair', ['bug', 'bug'], [0, 60]),
+        ('slide-then-wall', ['drone', 'mine'], [0, 620]),
+        ('stomp-chain', ['patrol', 'patrol', 'patrol'], [0, 420, 840]),
+        ('dash-lane', ['mine'], [0]),
+        ('pair', ['patrol', 'patrol'], [0, 80]),
     ]
     print(f"  {'pattern':16s} {'tier':>5s} {'H':>5s} {'span':>6s} {'speed':>6s} {'budget':>8s} {'margin':>8s}")
     for name, kinds, dxs in pats:

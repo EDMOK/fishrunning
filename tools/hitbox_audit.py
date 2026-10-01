@@ -2,9 +2,8 @@
 """
 Visual proof that the collision boxes match the art.
 
-Draws every sprite with the box the GAME will actually use (read straight out of
-assets/manifest.json, so this cannot drift from the runtime) plus the raw
-silhouette box for comparison. Run after tools/build_assets.py.
+Draws every sprite with the box the game will use (read from
+assets/manifest.json) plus the raw silhouette box for comparison. Run after tools/build_art.py.
 """
 import json
 import os
@@ -16,6 +15,19 @@ M = json.load(open(f'{A}/manifest.json', encoding='utf-8'))
 SPEC = M['hero']['_box']
 H = SPEC['designH']
 os.makedirs('preview', exist_ok=True)
+
+
+def sprite_path(key):
+    """Where a manifest key's PNG actually lives.
+
+    The obstacle set is drawn into assets/obstacle/new/, so the flat
+    `assets/<cat>/<name>.png` rule only holds for the categories built in place.
+    """
+    flat = f'{A}/{key}.png'
+    if os.path.exists(flat):
+        return flat
+    nested = f'{A}/{key.split("/")[0]}/new/{key.split("/")[1]}.png'
+    return nested if os.path.exists(nested) else flat
 
 
 def sil_box(im, lo=0.06, hi=0.94):
@@ -49,7 +61,7 @@ d = ImageDraw.Draw(sheet, 'RGBA')
 print(f"{'sprite':18s} {'art':>10s} {'game box (x,y,w,h)':>24s} {'offset from sprite centre':>26s}")
 for i, key in enumerate(names):
     cat, name = key.split('/')
-    im = Image.open(f'{A}/{key}.png').convert('RGBA')
+    im = Image.open(sprite_path(key)).convert('RGBA')
     w, h = im.size
     if cat == 'hero':
         box = hero_box_px(name, w, h)

@@ -1,0 +1,678 @@
+/* ==========================================================================
+   白饭大冲刺 · UI design system
+   One theme, one component language. Light "paper over sky": white cards,
+   quiet blue ink, warm gold reserved for rewards. No neon, no glow, no
+   scanlines — the illustration carries the colour, the interface stays calm.
+   Structure lives in index.html; everything visual is defined here.
+   ========================================================================== */
+
+:root{
+  /* --- type: two voices, split by job -------------------------------- */
+  --f-ui:'Baloo 2','Noto Sans SC','PingFang SC','Microsoft YaHei UI',system-ui,sans-serif;
+  --f-display:'Baloo 2','ZCOOL QingKe HuangYou','Noto Sans SC','PingFang SC','Microsoft YaHei UI',system-ui,sans-serif;
+
+  /* --- ink ------------------------------------------------------------ */
+  --ink:#1f3a54;          /* headings, numbers, primary text */
+  --ink-2:#52708c;        /* body, values, secondary */
+  --ink-3:#8aa2b8;        /* captions, hints */
+
+  /* --- surfaces ------------------------------------------------------- */
+  --paper:#ffffff;
+  --paper-soft:#f4f9fe;
+  --line:#dbe8f3;
+  --line-strong:#c4d9ea;
+
+  /* --- accents: one job each ------------------------------------------ */
+  --blue:#2f80ed;         /* interactive */
+  --blue-2:#1e63c8;       /* interactive, pressed/hover */
+  --blue-soft:#e7f1fd;
+  --gold:#b97b12;         /* reward text (contrast-safe on light) */
+  --gold-bright:#f2a93b;  /* reward fill, bar, icon */
+  --gold-soft:#fdf3e0;
+  --green:#3fa97c;        /* buffs, safety, dash */
+  --green-soft:#e7f6ef;
+  --red:#e4605e;          /* hazards */
+  --pink:#c65d92;         /* special upgrades */
+  --pink-soft:#fbeaf3;
+
+  /* --- radius --------------------------------------------------------- */
+  --r-s:10px; --r-m:14px; --r-l:20px; --r-xl:28px;
+
+  /* --- elevation: soft, single source --------------------------------- */
+  --sh-1:0 1px 2px rgba(31,58,84,.07),0 2px 10px rgba(31,58,84,.05);
+  --sh-2:0 2px 4px rgba(31,58,84,.06),0 8px 24px rgba(31,58,84,.10);
+  --sh-3:0 4px 8px rgba(31,58,84,.05),0 18px 48px rgba(31,58,84,.14);
+}
+
+/* ============================================================ backdrop === */
+html,body{background:#e9f4fd}
+body{color:var(--ink)}
+#fit{background:
+  radial-gradient(1100px 640px at 18% -8%,#f8fdff 0%,rgba(248,253,255,0) 62%),
+  linear-gradient(180deg,#dcefff 0%,#eef7ff 56%,#fdf6e9 100%)}
+/* The repeating AI motif. The URL arrives as a custom property rather than a
+   literal, because ASSET_VERSION lives in game.js and CSS cannot read it: a bare
+   `url(...)` here would be a second, separate cache entry for a file the
+   preloader already fetched (see assetURL in game.js). bindShellAssets() sets
+   it before the first frame. Unset simply means no motif, which is the correct
+   degradation — the same layers are already a soft gradient without it. */
+#fit::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:var(--pattern-ai) center/340px repeat;opacity:.05;
+}
+#stage{
+  border-radius:var(--r-l);
+  box-shadow:0 0 0 1px rgba(255,255,255,.65),var(--sh-3);
+}
+#stage::after{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  border-radius:var(--r-l);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4);
+}
+
+/* =============================================================== panels === */
+.panel{
+  position:relative;
+  background:rgba(255,255,255,.88);
+  border:1px solid var(--line);
+  border-radius:var(--r-m);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:var(--sh-1);
+}
+.panel::before{content:none}
+
+/* ============================================================ typography == */
+#cardTitle h1,.titleArtNote,#goTitle,
+.bigbtn,.legbtn,
+#loading .loadTitle,
+#shopPanel h2,.siName,
+#evTitle,#zoneName,
+#rotate b,
+#pad button,
+#btnShop .btnTip,
+#cardOver .stat b{font-family:var(--f-display)}
+/* Long mixed values ("护盾 Lv.2、磁铁 Lv.1、过载 Lv.3") are a sentence, not a
+   name: the display face turns them to mush at 14px. */
+#cardOver .stat.skills b{font-family:var(--f-ui)}
+
+/* ================================================================= HUD === */
+#topleft{
+  position:absolute;left:16px;top:16px;
+  display:flex;align-items:center;gap:14px;
+  min-width:272px;height:64px;box-sizing:border-box;padding:8px 16px;
+}
+#scoreWrap{display:flex;flex-direction:column;line-height:1;min-width:96px}
+#scoreLabel{
+  display:flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--ink-3);margin-bottom:4px;
+}
+#scoreLabel img{width:13px;height:13px;opacity:.85}
+#score{font-size:30px;font-weight:800;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+#livesRow{
+  display:flex;align-items:center;gap:4px;margin-left:auto;padding:0 0 0 14px;
+  background:none;border:0;border-left:1px solid var(--line);border-radius:0;
+  box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;
+}
+#livesRow::before{content:none}
+.life{width:24px;height:24px;transition:transform .2s,opacity .3s,filter .3s}
+.life.lost{opacity:.32;filter:grayscale(1);transform:scale(.85)}
+
+#combo{
+  position:absolute;left:304px;top:16px;width:104px;height:64px;box-sizing:border-box;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  background:rgba(253,243,224,.94);border:1px solid #f0dfb8;border-radius:var(--r-m);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:var(--sh-1);
+  opacity:0;transition:opacity .18s;
+}
+#combo.on{opacity:1}
+#comboNum{font-size:28px;font-weight:800;line-height:1;color:var(--gold);font-variant-numeric:tabular-nums}
+#comboNum.hit{animation:cpop .3s cubic-bezier(.34,1.7,.5,1)}
+@keyframes cpop{0%{transform:scale(1)}50%{transform:scale(1.32)}100%{transform:scale(1)}}
+#comboTxt{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--gold);opacity:.8}
+#comboRing{display:block;position:absolute;inset:7px;border:2px solid rgba(223,169,67,.28);border-radius:50%;pointer-events:none;transition:transform .08s,opacity .08s}
+
+#topright{position:absolute;top:16px;right:16px;display:flex;flex-direction:row;align-items:center;gap:10px}
+
+#riceWrap{
+  display:flex;align-items:center;gap:10px;min-width:142px;height:64px;box-sizing:border-box;padding:0 16px 0 10px;margin:0;
+  background:linear-gradient(150deg,#fffdf7,#fff2d8);border:1px solid rgba(255,255,255,.95);border-radius:19px;
+  box-shadow:inset 0 -2px 0 #eddab2,0 4px 12px rgba(57,104,143,.12);
+}
+#riceIcon{width:40px;height:40px;object-fit:contain;filter:drop-shadow(0 2px 1px rgba(152,107,36,.12))}
+#riceBlock{display:flex;flex-direction:column;line-height:1}
+#riceLabel{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.04em;color:#956d2c;margin-bottom:3px;white-space:nowrap}
+#riceLabel span{font-size:8px;letter-spacing:.12em;color:#ac8951}
+#riceCount{font-size:27px;font-weight:800;line-height:1;color:#8e5d19;font-variant-numeric:tabular-nums}
+#riceCount.pop{animation:pop .26s ease-out}
+@keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.28)}100%{transform:scale(1)}}
+
+#btns{
+  display:flex;align-items:center;gap:4px;height:64px;padding:7px;
+  border:1px solid rgba(255,255,255,.85);border-radius:19px;
+  background:rgba(242,250,255,.88);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:inset 0 1px 0 #fff,0 4px 12px rgba(57,104,143,.12);
+}
+.btn{
+  height:46px;min-width:46px;padding:0;border-radius:var(--r-m);border:1px solid var(--line);
+  background:rgba(255,255,255,.88);color:var(--blue);cursor:pointer;font-weight:800;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:var(--sh-1);
+  transition:transform .12s,box-shadow .12s,background-color .15s,border-color .15s,color .15s;
+}
+.btn img{width:22px;height:22px;object-fit:contain;pointer-events:none}
+.btn:hover{transform:translateY(-1px);background:#fff;border-color:var(--line-strong);box-shadow:var(--sh-2)}
+.btn:active{transform:translateY(1px);box-shadow:var(--sh-1)}
+.btn.off{color:var(--ink-3)}
+#btns .btn{
+  flex:0 0 auto;width:44px;min-width:44px;height:48px;border:0;border-radius:12px;
+  color:#53799a;background:transparent;box-shadow:none;
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+  transition:transform .18s ease,background-color .18s ease,box-shadow .18s ease,color .18s ease;
+}
+#btns .btn:hover{color:#246fc2;background:#fff;box-shadow:0 2px 5px rgba(57,104,143,.09);transform:translateY(-1px)}
+#btns .btn:active{transform:translateY(1px) scale(.96);box-shadow:none}
+#btns .btn:focus-visible{outline:3px solid #215fa4;outline-offset:2px}
+.hudIcon{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+#btns #btnShop{
+  width:auto;min-width:112px;padding:0 13px;margin-right:4px;gap:8px;
+  color:#fff;background:#307bd3;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 3px 0 #2261aa,0 4px 7px rgba(37,99,168,.18);
+}
+#btns #btnShop:hover{background:#3c88de;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 0 #2261aa,0 5px 10px rgba(37,99,168,.22)}
+#btns #btnShop:active{transform:translateY(2px);box-shadow:inset 0 1px 3px rgba(20,67,122,.2)}
+#btnShop .btnTip{font-family:var(--f-ui);font-size:14px;font-weight:700;letter-spacing:.05em}
+#btnShop kbd{display:flex;align-items:center;justify-content:center;width:17px;height:19px;border:1px solid rgba(255,255,255,.35);border-radius:5px;font:600 10px var(--f-ui);color:#e0efff}
+#btns .btn.off{color:#8b9dad;background:rgba(210,225,237,.5)}
+.soundSlash,#btnSound.off .soundWaves{display:none}
+#btnSound.off .soundSlash{display:block}
+
+#dashHud{
+  position:absolute;left:16px;top:150px;height:44px;box-sizing:border-box;
+  display:flex;align-items:center;gap:9px;padding:0 14px;
+}
+.dhTag{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--ink-2)}
+.dhTag img{width:18px;height:18px;object-fit:contain}
+#dashPips{display:flex;gap:4px}
+#dashPips i{width:12px;height:12px;border-radius:4px;background:var(--green);box-shadow:inset 0 1px 0 rgba(255,255,255,.45)}
+#dashPips i.spent{background:#e3ecf3;box-shadow:none}
+#dashCd{position:relative;width:0;height:6px;border-radius:3px;overflow:hidden;background:#e3ecf3;transition:width .18s}
+#dashCd.on{width:52px}
+#dashCd i{display:block;height:100%;width:0;border-radius:3px;background:var(--green)}
+
+#powerups{position:absolute;left:184px;top:150px;display:flex;flex-direction:row;align-items:center;gap:8px}
+.pw{display:flex;align-items:center;gap:9px;width:150px;height:44px;box-sizing:border-box;padding:0 12px 0 8px}
+.pw img{width:26px;height:26px;object-fit:contain;flex:0 0 auto}
+.pwBody{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.pwName{font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pw .bar{position:relative;height:6px;border-radius:3px;background:#e3ecf3;overflow:hidden}
+.pw .bar i{display:block;height:100%;border-radius:3px;background:var(--blue);transition:width .1s linear}
+.pw.chip .bar i{background:var(--gold-bright)}
+.pw.magnet .bar i{background:#e58ab8}
+.pw.shield .bar i{background:var(--green)}
+.pw.overclock .bar i{background:var(--gold-bright)}
+
+#dashFx{
+  position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.32),transparent);
+}
+
+#zonePlaque{
+  position:absolute;left:16px;top:96px;
+  display:flex;align-items:baseline;gap:10px;
+  min-width:280px;max-width:470px;box-sizing:border-box;padding:9px 14px;
+  transition:border-color .3s,background-color .3s;
+}
+#zoneTag{display:none}
+#zoneName{font-size:17px;color:var(--ink);letter-spacing:.02em;white-space:nowrap}
+#zoneRule{font-size:11px;font-style:normal;color:var(--ink-2)}
+#zoneGoal{
+  font-size:11px;color:var(--gold);margin-left:auto;padding-left:10px;
+  border-left:1px solid var(--line);white-space:nowrap;
+}
+#zonePlaque.banner{border-color:#f0d9a8;background:rgba(253,243,224,.95)}
+
+#eventBanner{
+  position:absolute;right:16px;top:96px;width:382px;max-width:382px;box-sizing:border-box;
+  display:flex;align-items:center;gap:12px;padding:10px 14px;
+  border-left:4px solid var(--blue);
+  opacity:0;pointer-events:none;transform:translateY(-6px);
+  transition:opacity .25s,transform .25s,border-color .25s;
+}
+#eventBanner.on{opacity:1;transform:translateY(0)}
+#eventBanner.reward{border-left-color:var(--gold-bright)}
+#eventBanner.hazard{border-left-color:var(--red)}
+#eventBanner.shop{border-left-color:var(--green)}
+#eventBanner.mood{border-left-color:var(--blue)}
+#evFace{width:44px;height:56px;object-fit:contain;flex:0 0 auto}
+#evBody{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+#evTitle{font-size:15px;font-weight:800;color:var(--ink);line-height:1.3}
+#evText{font-size:11.5px;font-weight:600;color:var(--ink-2);line-height:1.45}
+#evCue{display:none}
+#evTimer{margin-top:4px;height:4px;border-radius:2px;background:#e3ecf3;overflow:hidden}
+#evTimer i{display:block;height:100%;width:100%;border-radius:2px;background:var(--gold-bright)}
+
+#shopNotice{
+  position:absolute;right:16px;bottom:16px;max-width:360px;padding:8px 14px;border-radius:var(--r-s);
+  font-size:12.5px;font-weight:700;color:var(--gold);
+  background:rgba(253,243,224,.95);border:1px solid #f0dfb8;box-shadow:var(--sh-1);
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+#shopNotice.on{opacity:1}
+
+/* ============================================================= overlays === */
+#overlay{
+  background:rgba(214,236,250,.6);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+#overlay::before{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.04;
+  background:var(--pattern-ai) center/300px repeat;
+}
+.card{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+  padding:32px 44px;
+  max-height:calc(100% - 28px);overflow:auto;scrollbar-width:none;
+  background:var(--paper);border:1px solid rgba(255,255,255,.9);border-radius:var(--r-xl);
+  box-shadow:var(--sh-3);
+}
+.card::-webkit-scrollbar{display:none}
+
+/* =========================================================== title card == */
+#cardTitle{
+  width:1056px;max-width:1056px;height:590px;padding:0;
+  display:grid;grid-template-columns:420px 1fr;
+  overflow:hidden;text-align:left;
+}
+/* Both card illustration columns (title and game-over) paint the sky backdrop.
+   --card-sky is the SAME file the game loads for the running background
+   (bg/sky.webp, 48 KB), not the 989 KB PNG these two rules used to pull in
+   separately: the preloader already has it, so the cards cost no extra download
+   and cannot drift from what the canvas draws. The `#d9f1ff` fallback keeps the
+   flat sky colour if the variable is unset. Keep both rules on the variable —
+   fixing only one leaves the other downloading the PNG and drifting on update. */
+.titleArt{height:100%;position:relative;overflow:hidden;
+  background:var(--card-sky,#d9f1ff) 25% center / auto 100%}
+.titleArt::after{content:'';position:absolute;bottom:-65px;left:-30px;width:470px;height:180px;border-radius:50%;background:#eef8ff}
+.titleArt > img{
+  position:absolute;width:420px;height:auto;left:-6px;top:185px;z-index:2;
+  filter:drop-shadow(0 14px 0 rgba(74,135,180,.08));
+  animation:float 4s ease-in-out infinite;
+}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.titleOrbit{position:absolute;width:300px;height:300px;border:2px solid rgba(255,255,255,.75);border-radius:50%;left:50px;top:160px}
+.titleArtNote{position:absolute;bottom:50px;left:54px;z-index:3;color:#3f7fae;font-size:22px;font-weight:900;transform:rotate(-5deg)}
+.titleContent{padding:36px 44px;align-self:center;min-width:0}
+.titleEyebrow{display:flex;align-items:center;gap:10px;color:var(--ink-3);font-size:11px;font-weight:800;letter-spacing:.16em}
+.titleEyebrow #emblem{width:34px;height:34px;animation:none;filter:none}
+#cardTitle .titleWrap{width:auto;height:auto;display:block;margin:16px 0 12px}
+#cardTitle h1{margin:0;font-size:58px;line-height:1.08;letter-spacing:0;color:var(--ink)}
+#cardTitle h1 span{display:block;color:var(--blue)}
+#cardTitle .sub{margin:0;font-size:15px;font-weight:600;line-height:1.65;letter-spacing:0;color:var(--ink-2)}
+#cardTitle .zoneStrip{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:14px 0 18px}
+#cardTitle .zchip{
+  padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;
+  color:var(--ink-2);background:var(--paper-soft);border:1px solid var(--line);
+}
+#cardTitle .zoneStrip em{font-style:normal;color:var(--ink-3);font-size:11px}
+#cardTitle .startRow{justify-content:flex-start;gap:10px;margin:0}
+#cardTitle #btnStart{min-width:230px}
+#cardTitle #btnFullCard{min-height:44px;padding:0 16px;font-size:13px}
+/* An <a>, not a <button>: the rest of the row drives game actions, this one
+   leaves the page. .bigbtn.ghost already sizes it; an anchor just needs the
+   underline gone.
+   Pink so the row reads "two ways to play, one door out" at a glance. Reuses
+   the --pink pair rather than adding a brand token: it lands at the same
+   contrast as the blue ghost beside it (3.90 vs 3.87), whereas Bilibili's own
+   #FB7299 is only 2.64:1 and would look washed out at 13px. The .biliIco uses
+   currentColor, so the glyph follows this colour for free. */
+#cardTitle #btnBili{text-decoration:none;color:var(--pink);border-color:var(--pink)}
+#cardTitle #btnBili:hover{background:var(--pink-soft);border-color:var(--pink)}
+#cardTitle .start{margin:10px 0 14px;font-size:11px;font-weight:600;letter-spacing:.02em;text-align:left;color:var(--ink-3)}
+/* Three explicit rows keep the key list inside the card's fixed height. */
+#cardTitle .keybar{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin:0;justify-content:start}
+#cardTitle .kb{border:0;background:transparent;padding:0;font-size:12.5px;line-height:1.3;gap:7px;white-space:nowrap}
+#cardTitle .kb b{padding:3px 7px;font-size:11.5px;line-height:1.2;border-radius:6px}
+.mobileHelp{display:none;font-size:12px;line-height:1.6;color:var(--ink-2);margin-top:12px}
+#cardTitle .best{display:inline-flex;font-size:11px;padding:0;margin:14px 0 0;border:0;box-shadow:none;background:none;color:var(--gold)}
+
+/* --- buttons ------------------------------------------------------------ */
+.bigbtn{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;
+  min-height:56px;padding:0 32px;border-radius:var(--r-m);border:1px solid var(--blue);
+  font-size:20px;font-weight:800;letter-spacing:.04em;color:#fff;background:var(--blue);
+  box-shadow:var(--sh-2);
+  transition:transform .12s,box-shadow .12s,background-color .15s,border-color .15s;
+}
+.bigbtn img{width:26px;height:26px;object-fit:contain}
+.bigbtn:hover{background:var(--blue-2);border-color:var(--blue-2);transform:translateY(-1px);box-shadow:var(--sh-3)}
+.bigbtn:active{transform:translateY(1px);box-shadow:var(--sh-1)}
+.bigbtn.ghost{
+  min-height:44px;padding:0 16px;font-size:13px;font-weight:800;
+  color:var(--blue);background:transparent;border-color:var(--line-strong);box-shadow:none;
+}
+.bigbtn.ghost:hover{background:var(--blue-soft);border-color:var(--blue);transform:none;box-shadow:none}
+.startRow{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+.start{font-size:11px;font-weight:600;color:var(--ink-3);letter-spacing:.02em}
+
+.keybar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.kb{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+.kb b{
+  display:inline-flex;align-items:center;justify-content:center;min-width:26px;padding:3px 8px;
+  border-radius:6px;font-size:11.5px;font-weight:800;color:var(--ink);
+  background:var(--paper);border:1px solid var(--line-strong);box-shadow:0 1.5px 0 var(--line-strong);
+}
+.best{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:var(--gold);letter-spacing:.02em}
+.best img{width:16px;height:16px;object-fit:contain}
+.best:empty{display:none}
+
+/* ========================================================== game over ==== */
+/* Built like the launch card — same 1056px frame, same illustration column —
+   so the end of a run reads as the next page of the same book, not a form. */
+#cardOver{
+  width:1056px;max-width:1056px;min-height:552px;
+  display:grid;grid-template-columns:392px 1fr;
+  /* .card centres its children; a grid item centred in the block axis would
+     collapse the art column to its content height, which is zero — everything
+     in it is absolutely positioned. */
+  align-items:stretch;
+  padding:0;overflow:hidden;text-align:left;
+}
+.overArt{position:relative;overflow:hidden;
+  background:var(--card-sky,#d9f1ff) 68% center / auto 100% no-repeat}
+.overArt::after{
+  content:'';position:absolute;left:-72px;bottom:-74px;width:560px;height:200px;
+  border-radius:50%;background:#f2fbff;box-shadow:0 -10px 22px rgba(126,175,214,.10);
+}
+.overArt::before{
+  content:'';position:absolute;left:-46px;bottom:96px;width:440px;height:340px;
+  border-radius:50%;z-index:1;
+  background:radial-gradient(closest-side,rgba(255,255,255,.7),rgba(255,255,255,0));
+}
+.overOrbit{position:absolute;left:66px;top:236px;width:224px;height:224px;z-index:1;
+  border:2px solid rgba(255,255,255,.75);border-radius:50%}
+.overHero{
+  position:absolute;left:4px;bottom:92px;width:322px;height:auto;z-index:2;
+  filter:drop-shadow(0 14px 0 rgba(74,135,180,.09));
+  animation:float 4.4s ease-in-out infinite;
+}
+.overFoe{
+  position:absolute;left:262px;bottom:34px;width:84px;height:auto;z-index:3;
+  filter:drop-shadow(0 5px 0 rgba(74,135,180,.12));
+  animation:foeTaunt 2.4s ease-in-out infinite;
+}
+@keyframes foeTaunt{
+  0%,100%{transform:rotate(-6deg) translateY(0)}
+  50%{transform:rotate(-2deg) translateY(-6px)}
+}
+.overArtNote{
+  position:absolute;left:30px;bottom:38px;z-index:4;
+  color:#3f7fae;font-size:20px;font-weight:900;transform:rotate(-5deg);text-shadow:0 1px 0 #fff;
+}
+.overContent{display:flex;flex-direction:column;align-items:center;padding:20px 44px 22px;min-width:0;text-align:center}
+
+/* Ribbon header. The marquee art is 1200x360 and its inner field (where the
+   heading belongs) runs rows 153-230, centred at 0.532 of the art; in this
+   110px box that field falls on rows 59-70, so the heading takes a small
+   downward nudge to sit on it rather than above it. */
+.goHead{position:relative;width:100%;height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.goHead .marquee{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.goHeadTxt{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:8px}
+#goTitle{font-size:32px;line-height:1;letter-spacing:.06em;color:var(--gold)}
+#goTitle.pauseTitle{color:var(--blue)}
+
+.goScore{display:flex;flex-direction:column;align-items:center;margin-top:2px}
+.goScoreLabel{font-size:11px;font-weight:800;letter-spacing:.28em;color:var(--ink-3)}
+.goScoreNum{font-size:56px;font-weight:800;line-height:1.1;color:var(--ink);font-variant-numeric:tabular-nums}
+.goScore::after{content:'';display:block;width:120px;height:1px;margin:10px auto 0;background:var(--line)}
+/* One line, two states — a record fell or it did not. It renders in both, so
+   the card keeps its height either way, and the shortfall case is still worth
+   reading: "how close was I" is the first thing a runner asks. */
+#bestLine{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:8px;min-height:30px;font-variant-numeric:tabular-nums}
+#bestLine img{width:20px;height:20px;object-fit:contain}
+#bestLine.rec{
+  padding:3px 14px 3px 6px;border-radius:999px;font-size:12.5px;font-weight:800;letter-spacing:.06em;
+  color:var(--pink);background:var(--pink-soft);border:1px solid #f2cfdf;animation:pop .5s ease-out;
+}
+#bestLine.near{font-size:12px;font-weight:600;color:var(--ink-3)}
+#bestLine.near img{width:17px;height:17px;opacity:.65}
+#bestLine.near b{font-size:14px;color:var(--blue)}
+
+.deathReason{width:100%;margin-top:10px;padding:9px 14px;border-radius:var(--r-m);background:#fff5dc;border:1px solid #f1dca5;color:var(--ink-2);display:flex;flex-direction:column;gap:3px;text-align:left;font-size:12px;line-height:1.35}
+.deathReason b{font-family:var(--f-display);font-size:15px;color:#bd7652}
+.deathReason span{color:var(--ink-3)}
+#goStats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;margin:12px 0 0}
+.stat{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  min-height:48px;padding:8px 14px;border-radius:var(--r-m);text-align:left;
+  font-size:13px;font-weight:600;color:var(--ink-2);
+  background:var(--paper-soft);border:1px solid var(--line);
+}
+.stat span{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.statIco{width:22px;height:22px;object-fit:contain;flex:0 0 auto}
+.stat b{font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums}
+/* Skill names are the one value that runs long ("护盾 Lv.2、磁铁 Lv.1、过载 Lv.3"),
+   so that value alone may wrap and shrink instead of stretching the tile. */
+.stat.skills b{font-size:14px;line-height:1.35;white-space:normal;text-align:right}
+
+.row{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;justify-content:center}
+.legbtn{
+  pointer-events:auto;display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  min-height:52px;padding:0 26px;border-radius:var(--r-m);cursor:pointer;
+  font-size:17px;font-weight:800;letter-spacing:.02em;
+  color:var(--ink-2);background:var(--paper);border:1px solid var(--line-strong);
+  box-shadow:var(--sh-1);
+  transition:transform .12s,box-shadow .12s,background-color .15s,border-color .15s,color .15s;
+}
+.legbtn img{width:24px;height:24px;object-fit:contain}
+.legbtn:hover{transform:translateY(-1px);border-color:var(--line-strong);background:var(--paper-soft);box-shadow:var(--sh-2);color:var(--ink)}
+.legbtn:active{transform:translateY(1px);box-shadow:var(--sh-1)}
+.legbtn.primary{color:#fff;background:var(--blue);border-color:var(--blue);box-shadow:var(--sh-2)}
+.legbtn.primary:hover{background:var(--blue-2);border-color:var(--blue-2);box-shadow:var(--sh-3)}
+.legbtn.primary:active{box-shadow:var(--sh-1)}
+#cardOver .row{margin-top:14px}
+#cardOver .legbtn{min-width:190px}
+.overHint{margin-top:10px;font-size:12px;font-weight:600;color:var(--ink-3);letter-spacing:.02em}
+
+/* The card is toggled with display:none, so this one-shot entrance replays on
+   every death without any JS behind it. */
+@keyframes overRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#cardOver .overArt{animation:overRise .45s ease-out both}
+#cardOver .overContent > *{animation:overRise .4s cubic-bezier(.2,.8,.3,1) both}
+#cardOver .overContent > :nth-child(1){animation-delay:.03s}
+#cardOver .overContent > :nth-child(2){animation-delay:.09s}
+#cardOver .overContent > :nth-child(3){animation-delay:.15s}
+#cardOver .overContent > :nth-child(4){animation-delay:.21s}
+#cardOver .overContent > :nth-child(5){animation-delay:.27s}
+
+/* ============================================================== pause ==== */
+.logoWrap{position:relative;display:flex;align-items:center;justify-content:center;width:132px;height:132px}
+.logoWrap::before,.logoWrap::after{content:none}
+#cardPause #goTitle{margin-bottom:6px}
+#cardPause .sub{font-size:14px;font-weight:600;color:var(--ink-2);letter-spacing:0;margin:0}
+#cardPause .keybar{margin-top:18px}
+
+/* =============================================================== shop ==== */
+/* Bottom-right on purpose: the whole right edge above it is a live column
+   (hearts, dash, buttons, running powerups) whose height changes during a run,
+   so any fixed top would eventually be drawn over. */
+#shopPanel{
+  position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+  padding:24px;box-sizing:border-box;pointer-events:auto;
+  background:rgba(199,226,246,.72);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+#shopPanel.hide{display:none}
+.shopWindow{
+  width:min(1030px,100%);max-height:calc(100dvh - 48px);
+  display:flex;flex-direction:column;overflow:hidden;
+  background:var(--paper);border-radius:var(--r-xl);box-shadow:var(--sh-3);
+}
+.shopHeader{display:flex;gap:20px;align-items:center;padding:22px 26px 18px;border-bottom:1px solid var(--line);flex-shrink:0}
+#shopPanel h2{display:flex;align-items:center;gap:10px;margin:0;font-size:24px;letter-spacing:0;color:var(--ink)}
+#shopPanel h2 img{width:30px;height:30px;object-fit:contain}
+.shopHeader p{margin:6px 0 0;font-size:12px;font-weight:600;color:var(--ink-3)}
+#shopBalance{
+  margin-left:auto;padding:10px 16px;border-radius:var(--r-s);
+  font-size:15px;font-weight:800;color:var(--gold);
+  background:var(--gold-soft);border:1px solid #f0dfb8;
+}
+#shopDismiss{
+  width:48px;height:48px;flex-shrink:0;border:0;border-radius:var(--r-m);cursor:pointer;
+  background:var(--paper-soft);color:var(--ink-2);font-size:26px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  transition:background-color .15s,color .15s;
+}
+#shopDismiss:hover{background:var(--blue-soft);color:var(--blue)}
+#shopList{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;
+  flex:1;min-height:0;padding:20px 24px;
+  overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;
+  scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent;
+}
+#shopList::-webkit-scrollbar{width:8px}
+#shopList::-webkit-scrollbar-thumb{border-radius:4px;background:var(--line-strong)}
+.shopItem{
+  display:flex;flex-direction:column;gap:7px;min-height:126px;padding:14px;
+  font:inherit;font-weight:800;color:var(--ink);cursor:pointer;text-align:left;
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--r-m);
+  box-shadow:var(--sh-1);
+  transition:transform .12s,box-shadow .12s,border-color .15s,background-color .15s;
+}
+.shopItem:hover:not(:disabled){transform:translateY(-2px);border-color:var(--blue);box-shadow:var(--sh-2)}
+.shopItem:active:not(:disabled){transform:translateY(0);box-shadow:var(--sh-1)}
+.shopItem:disabled{cursor:not-allowed;background:var(--paper-soft);border-color:var(--line);box-shadow:none}
+.shopItem:disabled .siName,.shopItem:disabled small{color:var(--ink-3)}
+.shopItem.sale{border-color:#f0d9a8;background:var(--gold-soft)}
+.siHead{display:flex;align-items:center;gap:9px}
+.siHead img{width:32px;height:32px;object-fit:contain;flex:0 0 auto}
+.siName{flex:1;font-size:16px;letter-spacing:.01em;min-width:0;color:var(--ink)}
+.siPips{display:flex;gap:4px;flex:0 0 auto}
+.siPips i{width:10px;height:10px;border-radius:50%;background:#e3ecf3}
+.siPips i.on{background:var(--gold-bright)}
+.shopItem small{color:var(--ink-2);font-size:13px;font-weight:600;line-height:1.45;min-height:38px}
+.siFoot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:4px}
+.shopItem strong{padding:6px 12px;border-radius:var(--r-s);font-size:13px;font-weight:800;
+  color:var(--gold);background:var(--gold-soft);border:1px solid #f0dfb8}
+.shopItem:disabled strong{color:var(--ink-3);background:transparent;border-color:var(--line)}
+/* Category chip: with nine cards the board needs to be scannable by role. */
+.siTag{margin-left:auto;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.06em;border:1px solid currentColor}
+.siTag.mob{color:var(--blue)}
+.siTag.eco{color:var(--gold)}
+.siTag.up{color:var(--pink)}
+.shopFooter{display:flex;align-items:center;gap:24px;padding:16px 24px;border-top:1px solid var(--line);background:var(--paper-soft);flex-shrink:0}
+#shopStatus{flex:1;color:var(--ink-2);font-size:13px;font-weight:600;line-height:1.6}
+/* The caption takes its own line under the label. Sharing one line with it
+   shrank the label into the play icon as soon as the display face made the
+   four characters wider than the button. */
+#btnShopClose{min-height:56px;min-width:262px;display:flex;flex-wrap:wrap;justify-content:center;gap:6px 13px;padding:8px 22px;font-size:17px}
+#btnShopClose small{flex:0 0 100%;font-size:10.5px;font-weight:700;opacity:.8;text-align:center;letter-spacing:.04em}
+
+/* ============================================================ loading ==== */
+#loading{background:linear-gradient(180deg,#e9f6ff,#fdfaf2);color:var(--ink-3);font-size:14px;font-weight:600}
+#loading .loadTitle{font-size:19px;font-weight:800;color:var(--blue);letter-spacing:.16em}
+.loadBar{width:260px;height:6px;border-radius:3px;background:#dceaf6;overflow:hidden}
+.loadBar i{display:block;width:42%;height:100%;border-radius:3px;
+  background:linear-gradient(90deg,transparent,var(--blue),transparent);
+  animation:slide 1.15s ease-in-out infinite}
+@keyframes slide{0%{transform:translateX(-110%)}100%{transform:translateX(340%)}}
+.spin{width:40px;height:40px;border-radius:50%;border:3px solid #dceaf6;border-top-color:var(--blue);animation:sp .9s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#loading #loadEmblem{filter:drop-shadow(0 6px 14px rgba(68,112,148,.18)) !important}
+
+/* ========================================================== touch pad ==== */
+/* Pinned to the viewport rather than to the 1280x720 stage on purpose: inside
+   the stage these would be scaled down with the world and land around 25px on
+   a phone, well under any touch-target guideline, and they would move around
+   under the thumb every time the window changed size. */
+#pad button{
+  pointer-events:auto;touch-action:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  width:88px;height:88px;border-radius:50%;padding:0;
+  border:1px solid var(--line-strong);color:var(--blue);
+  font-weight:800;font-size:17px;letter-spacing:.04em;
+  background:rgba(255,255,255,.9);
+  box-shadow:var(--sh-1);
+  transition:transform .08s,background-color .12s,border-color .12s,box-shadow .12s;
+}
+#pad button i{font-style:normal;font-size:11px;font-weight:600;color:var(--ink-3);letter-spacing:.02em}
+#pad button::before{
+  display:flex;align-items:center;justify-content:center;
+  width:30px;height:30px;margin-bottom:1px;border-radius:50%;
+  font-style:normal;font-size:22px;line-height:1;color:var(--blue);background:var(--blue-soft);
+}
+#padSlide::before{content:"↓"}
+#padDash::before{content:"↗"}
+#padJump::before{content:"↑"}
+#pad button.held{transform:translateY(1px) scale(.96);background:var(--blue-soft);border-color:var(--blue);box-shadow:var(--sh-1)}
+#pad button.off{opacity:.45;filter:saturate(.4)}
+#pad .jump{width:116px;height:116px;font-size:20px;background:rgba(255,255,255,.95)}
+#pad .jump i{font-size:11px}
+#pad button *{
+  pointer-events:none;-webkit-user-select:none;user-select:none;
+  -webkit-touch-callout:none;
+}
+@media (pointer:coarse){
+  #pad .side{bottom:calc(10px + env(safe-area-inset-bottom,0px));gap:10px}
+  #pad .side.l{left:calc(12px + env(safe-area-inset-left,0px))}
+  #pad .side.r{right:calc(12px + env(safe-area-inset-right,0px))}
+  #pad button{width:clamp(52px,15vh,68px);height:clamp(52px,15vh,68px);font-size:14px;gap:0;background:rgba(255,255,255,.78)}
+  #pad .jump{width:clamp(64px,18vh,82px);height:clamp(64px,18vh,82px);font-size:16px;background:rgba(255,255,255,.84)}
+  #pad button::before{width:22px;height:22px;font-size:18px;margin:0;background:none}
+  #pad button i{display:none}
+  #shopPanel{backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+
+/* ============================================================= rotate ==== */
+/* The stage is 16:9, so a portrait phone can only ever show a sliver of it
+   (a 390px-wide screen lands on a ~0.3 scale with two thirds of the track
+   off-screen). Rather than let someone start a run they cannot read, ask for
+   landscape first. Purely a media query: rotating swaps it out with no JS. */
+#rotate{background:linear-gradient(180deg,#e9f6ff,#fdfaf2)}
+#rotate .phone{position:relative;width:66px;height:110px;border:3px solid var(--blue);border-radius:13px;animation:turn 2.2s ease-in-out infinite}
+#rotate .phone::after{content:"";position:absolute;left:50%;bottom:8px;width:18px;height:3px;margin-left:-9px;border-radius:2px;background:var(--blue)}
+@keyframes turn{0%,28%{transform:rotate(0)}62%,100%{transform:rotate(-90deg)}}
+#rotate b{font-size:20px;font-weight:800;letter-spacing:.06em;color:var(--blue)}
+#rotate span{font-size:13px;font-weight:600;line-height:1.7;color:var(--ink-2);max-width:320px}
+.iosHint{color:var(--gold);font-weight:700;font-size:12.5px;letter-spacing:.02em}
+
+/* ============================================================= helpers === */
+#stage.selecting canvas{filter:saturate(.9) brightness(.97);transition:filter .25s}
+
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:var(--r-s)}
+
+@media (hover:none) and (pointer:coarse){
+  #riceWrap{height:78px}
+  #btns{height:78px}
+  #btnShop kbd{display:none}
+  #btns #btnShop{min-width:140px;height:64px}
+  #btns #btnPause{min-width:64px;height:64px}
+  #btns #btnSound,#btns #btnFull{display:none}
+  #cardTitle .keybar{display:none}
+  .mobileHelp{display:block}
+  #shopDismiss{width:64px;height:64px}
+  #btnShopClose{min-height:68px}
+}
+@media (prefers-reduced-motion:reduce){
+  #btns .btn{transition:none}
+}
+@media (max-width:760px){
+  #shopPanel{padding:12px}
+  .shopWindow{max-height:calc(100dvh - 24px)}
+  #shopList{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px}
+  .shopHeader,.shopFooter{padding:12px 16px;gap:12px}
+  #shopPanel h2{font-size:19px}
+  #shopBalance{font-size:12px;padding:8px 12px}
+  #shopStatus{font-size:12px}
+  #btnShopClose{min-width:180px}
+}
+@media (max-height:520px){
+  #shopPanel{padding:8px}
+  .shopWindow{max-height:calc(100dvh - 16px)}
+  .shopHeader,.shopFooter{padding:8px 16px}
+  .shopHeader p{display:none}
+  #shopDismiss{width:44px;height:44px}
+  #btnShopClose{min-height:48px}
+}
