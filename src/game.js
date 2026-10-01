@@ -394,12 +394,23 @@
   }
 
   function queueChallenge(kind) {
-    if(kind!=='captcha')return;
-    var at=safeHazardSlot(1150,123);
-    if(at===null)return;
-    addObstacle('drone',at,{float:142,bob:6,eventHazard:true});
-    gen.x=Math.max(gen.x,at+123+gapFor(tier()));
-    addRiceLine(at-60,GROUND_Y-56,6,48);
+    var doubleBar = kind === 'doublecheck';
+    var sweep = kind === 'sweep';
+    if (kind !== 'captcha' && !doubleBar && !sweep && kind !== 'cacheflush') return;
+    var width = doubleBar ? 700 : 220;
+    var at = safeHazardSlot(1150, width);
+    if (at === null) return;
+    if (kind === 'cacheflush') {
+      addObstacle('mine', at, { motion: 32, eventHazard: true });
+      addRiceArc(at - 60, GROUND_Y - 170, 5, 48);
+    } else {
+      addObstacle('drone', at, { float: 142, bob: 6, motion: sweep ? 78 : 0, eventHazard: true });
+      if (doubleBar) addObstacle('drone', at + 540, { float: 142, bob: 6, eventHazard: true });
+      addRiceLine(at - 60, GROUND_Y - 56, doubleBar ? 14 : 6, 48);
+    }
+    gen.x = Math.max(gen.x, at + width + gapFor(tier()));
+    popText(camX + PLAYER_X, player.y - 210,
+      kind === 'cacheflush' ? '前方缓存风暴' : doubleBar ? '连续滑动验证' : sweep ? '巡航验证条' : '前方滑动验证', '#ff9ad2', 28);
   }
 
   function openDiscountShop() {
@@ -481,7 +492,9 @@
   }
 
   // ---- event director ------------------------------------------------------
-  var genEvent = { next:7600 };
+  // The first event is deliberately early enough to teach that the run has
+  // more than obstacle timing, while later events keep their breathing room.
+  var genEvent = { next: 2400, count: 0 };
 
   function eventGroup(e) {
     if (e.id === 'discount') return 'shop';
@@ -491,9 +504,10 @@
   }
 
   function nextEventGap() {
-    if(dist<14000)return rand(8000,10000);
-    if(dist<30000)return rand(6000,8500);
-    return rand(4500,7000);
+    if (dist < 5200) return rand(2600, 3600);
+    if (dist < 14000) return rand(3600, 5000);
+    if (dist < 24000) return rand(4200, 5600);
+    return rand(4600, 6200);
   }
 
   function fireEvent() {
@@ -504,7 +518,11 @@
         !(e.id === 'discount' && sale.t > 0);
     });
     if (!pool.length) return false;
-    var ev=pick(pool);
+    // A reward first, then a discount: both are readable introductions without
+    // an abrupt speed change or a new hazard on the player's first few beats.
+    var introId = genEvent.count === 0 ? 'rush' : genEvent.count === 1 ? 'discount' : '';
+    var ev = pool.filter(function (e) { return e.id === introId; })[0] || pick(pool);
+    genEvent.count++;
     lastEventId = ev.id; lastEventGroup = eventGroup(ev);
     eventDef = ev; eventT = ev.dur || 2.8;
     if (ev.shake) shake(ev.shake);
@@ -870,7 +888,7 @@
   // PNG path, painted ones become data URLs so the same `<img src>` works.
   var powerIconURL = {};
 
-  var ASSET_VERSION = '20261001-city1';
+  var ASSET_VERSION = '20261001-events1';
 
   /**
    * The single place an asset URL is built. The preloader and every later
@@ -2473,7 +2491,7 @@
     gen.x = 1500; gen.sincePower = 0;
     // A fresh run must not inherit the last run's zone, event or modifiers.
     zoneIdx = -1; zoneBannerT = 0; zoneBanner = '';
-    genEvent.next = 7600;
+    genEvent.next = 2400; genEvent.count = 0;
     milestone.next = 1000;
     skillLevels = {};
     riceFraction = 0;

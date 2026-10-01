@@ -256,7 +256,7 @@
       id: 'discount',
       title: '限时特价上架',
       who: 'qwen',
-      text: '随机一至两项技能打六折，打开商店即可购买。',
+      text: '随机两至三项技能打六折，打开商店即可购买。',
       kind: 'instant',
       eval: { discountShop: true },
       src: '模型服务与订阅促销是公开常见的商业活动；本条为游戏化折扣事件'
@@ -278,6 +278,56 @@
       kind: 'instant',
       eval: { challenge: 'captcha' },
       src: '网页滑动验证是公开常见的交互机制；本条为游戏化障碍事件'
+    },
+    {
+      id: 'sweep',
+      title: '动态风控巡查',
+      who: 'claude',
+      text: '验证条在前方来回巡航。看准提示，滑铲通过。',
+      group: 'hazard', cue: '移动障碍 · 滑铲通过',
+      kind: 'instant',
+      eval: { challenge: 'sweep' },
+      src: '在线服务动态风控与验证是公开常见的交互机制；本条为游戏化障碍事件'
+    },
+    {
+      id: 'doublecheck',
+      title: '二次验证已启用',
+      who: 'gpt',
+      text: '两道验证条接连出现，保持低姿态穿过去。',
+      group: 'hazard', cue: '连续障碍 · 两次滑铲',
+      kind: 'instant',
+      eval: { challenge: 'doublecheck' },
+      src: '二次验证是公开常见的账号安全机制；本条为游戏化障碍事件'
+    },
+    {
+      id: 'cacheflush',
+      title: '缓存风暴来袭',
+      who: 'gemini',
+      text: '失效的数据块在跑道上左右漂移。提前起跳。',
+      group: 'hazard', cue: '移动地面障碍 · 提前跳跃',
+      kind: 'instant',
+      eval: { challenge: 'cacheflush' },
+      src: '缓存失效是公开常见的系统运行现象；本条为游戏化障碍事件'
+    },
+    {
+      id: 'batch',
+      title: '批量请求合并成功',
+      who: 'qwen',
+      text: '白饭集中到账，接下来的路也宽松了一些。',
+      group: 'reward', cue: '白饭雨 · 障碍间距增加',
+      kind: 'timed', dur: 8,
+      eval: { riceRain: 14, gapMul: 1.25 },
+      src: '批量推理是公开常见的服务能力；本条为游戏化奖励事件'
+    },
+    {
+      id: 'warmup',
+      title: '预热完成，吞吐提升',
+      who: 'deepseek',
+      text: '跑得更快、得分更高，注意观察前方。',
+      group: 'mood', cue: '速度与得分提升',
+      kind: 'timed', dur: 7,
+      eval: { speedMul: 1.18, scoreMul: 1.3 },
+      src: '模型服务预热与吞吐提升是公开常见的运行现象；本条为游戏化节奏事件'
     }
   ];
 
