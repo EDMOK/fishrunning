@@ -1,0 +1,180 @@
+{
+  "results": [
+    {
+      "name": "quick slide between frames",
+      "passed": true
+    },
+    {
+      "name": "repeated slide taps renew minimum duration",
+      "passed": true
+    },
+    {
+      "name": "slide is active in the landing frame",
+      "passed": true
+    },
+    {
+      "name": "jump starts on press",
+      "passed": true
+    },
+    {
+      "name": "two jump taps between frames",
+      "passed": true
+    },
+    {
+      "name": "hold slide then jump with second finger",
+      "passed": true
+    },
+    {
+      "name": "jump capture survives finger moving outside",
+      "passed": true
+    },
+    {
+      "name": "cancel releases held slide",
+      "passed": true
+    },
+    {
+      "name": "pause discards queued jump and slide",
+      "passed": true
+    },
+    {
+      "name": "capture failure does not drop synthetic presses",
+      "passed": true
+    },
+    {
+      "name": "keyboard quick slide uses same press buffer",
+      "passed": true
+    },
+    {
+      "name": "jump first then second finger slides on landing",
+      "passed": true
+    },
+    {
+      "name": "left swipe slides without queuing a jump",
+      "passed": true
+    },
+    {
+      "name": "swipe expiry cannot release keyboard slide",
+      "passed": true
+    },
+    {
+      "name": "shop discards queued input",
+      "passed": true
+    },
+    {
+      "name": "blur pauses and clears fingers",
+      "passed": true
+    },
+    {
+      "name": "lost capture releases the button",
+      "passed": true
+    },
+    {
+      "name": "releasing pad preserves keyboard glide hold",
+      "passed": true
+    },
+    {
+      "name": "restart discards both pending jumps",
+      "passed": true
+    }
+  ],
+  "layout": [
+    {
+      "viewport": {
+        "width": 568,
+        "height": 320
+      },
+      "buttons": [
+        {
+          "id": "padSlide",
+          "x": 12,
+          "y": 246,
+          "w": 64,
+          "h": 64,
+          "hit": true
+        },
+        {
+          "id": "padDash",
+          "x": 86,
+          "y": 246,
+          "w": 64,
+          "h": 64,
+          "hit": true
+        },
+        {
+          "id": "padJump",
+          "x": 476,
+          "y": 230,
+          "w": 80,
+          "h": 80,
+          "hit": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "buttons": [
+        {
+          "id": "padSlide",
+          "x": 12,
+          "y": 309.8125,
+          "w": 70.1875,
+          "h": 70.1875,
+          "hit": true
+        },
+        {
+          "id": "padDash",
+          "x": 92.1875,
+          "y": 309.8125,
+          "w": 70.1875,
+          "h": 70.1875,
+          "hit": true
+        },
+        {
+          "id": "padJump",
+          "x": 746.203125,
+          "y": 294.203125,
+          "w": 85.796875,
+          "h": 85.796875,
+          "hit": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 844,
+        "height": 475
+      },
+      "buttons": [
+        {
+          "id": "padSlide",
+          "x": 12,
+          "y": 385,
+          "w": 80,
+          "h": 80,
+          "hit": true
+        },
+        {
+          "id": "padDash",
+          "x": 102,
+          "y": 385,
+          "w": 80,
+          "h": 80,
+          "hit": true
+        },
+        {
+          "id": "padJump",
+          "x": 736,
+          "y": 369,
+          "w": 96,
+          "h": 96,
+          "hit": true
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "verification": "Edge mobile emulation with real CDP touch input; no physical-device test"
+}

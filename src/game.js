@@ -646,9 +646,7 @@
   function toggleShop() {
     if (game.state === 'playing') {
       game.state = 'shop';
-      player.buffer = 0;
-      keys = {};
-      releasePad(); touchJumpHeld = false;
+      resetInput();
       GameAudio.duckBgm(true);
       setSelecting(true);
       cx.shop.classList.remove('hide');
@@ -2287,6 +2285,20 @@
   // Fingers hold the jump open for the glide without ever touching `keys`; the
   // on-screen pad does the same, and `down` is the pad's slide/stomp hold.
   var touchJumpHeld = false, padJumpHeld = false, padDown = false;
+  var jumpFollowup = 0, slideBuffer = 0, gestureDownT = 0;
+
+  function endTouch() {
+    touchStart = null;
+    touchJumpHeld = false;
+  }
+
+  function resetInput() {
+    keys = {};
+    endTouch();
+    releasePad();
+    player.buffer = 0;
+    jumpFollowup = slideBuffer = gestureDownT = 0;
+  }
 
   function jumpPressed() {
     if (game.state === 'title') { startRun(); return; }
@@ -2294,7 +2306,26 @@
     // Only buffer while actually running. Buffering under a modal would leave the
     // jump queued and fire it the instant the card picker closes, which reads as
     // the game jumping on its own.
-    if (game.state === 'playing') player.buffer = JUMP_BUFFER;
+    if (game.state === 'playing') {
+      // Two taps can arrive between simulation frames. Preserve the second
+      // edge for the next simulation step instead of overwriting the first jump.
+      if (player.buffer > 0) jumpFollowup = JUMP_BUFFER;
+      else player.buffer = JUMP_BUFFER;
+    }
+  }
+
+  function slidePressed() {
+    if (game.state === 'playing') slideBuffer = JUMP_BUFFER;
+  }
+
+  function beginSlide() {
+    // A fresh tap renews the minimum duration even during an existing slide.
+    if (slideBuffer > 0) player.slideT = 0;
+    slideBuffer = 0;
+    if (player.sliding) return;
+    player.sliding = true; player.slideT = 0;
+    GameAudio.sfx('slide');
+    burst(camX + PLAYER_X - 20, player.y, { n: 8, col: ['#bff4ff', '#8fd8ff'], sp0: 40, sp1: 170, dir: Math.PI, spread: 0.8, r0: 2, r1: 6, g: 300, l0: .2, l1: .5 });
   }
 
   function onKeyDown(e) {
@@ -2316,6 +2347,7 @@
       keys[k] = true;
     } else if (k === 'ArrowDown' || k === 'KeyS') {
       e.preventDefault();
+      if (!keys[k]) slidePressed();
       keys[k] = true;
     } else if (k === 'ShiftLeft' || k === 'ShiftRight' || k === 'KeyJ') {
       e.preventDefault();
@@ -2348,6 +2380,7 @@
    * lift trims the jump exactly like a key does.
    */
   function cutJump() {
+    if (jumpHeld()) return;
     if (player.cuttable && player.vy < 0) {
       player.vy *= 0.85;
       player.cuttable = false;
@@ -2356,30 +2389,32 @@
 
   function onKeyUp(e) {
     var k = e.code;
-    if (keys[k] && JUMP_KEYS.indexOf(k) >= 0) cutJump();
+    var wasHeld = keys[k];
     keys[k] = false;
+    if (wasHeld && JUMP_KEYS.indexOf(k) >= 0) cutJump();
   }
 
-  function downHeld() { return padDown || !!(keys['ArrowDown'] || keys['KeyS']); }
+  function downHeld() { return padDown || gestureDownT > 0 || !!(keys['ArrowDown'] || keys['KeyS']); }
 
   function bindInput() {
     window.addEventListener('keydown', onKeyDown, { passive: false });
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', function () {
-      keys = {}; endTouch(); releasePad();
+      resetInput();
+      if (game.state === 'playing') setPause(true);
+    });
+
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) return;
+      resetInput();
       if (game.state === 'playing') setPause(true);
     });
 
     var stage = document.getElementById('stage');
 
-    /** Forget the finger in flight, whatever it was about to do. */
-    function endTouch() {
-      if (touchStart) { clearTimeout(touchStart.timer); touchStart = null; }
-      touchJumpHeld = false;
-    }
-
     stage.addEventListener('pointerdown', function (e) {
       if (e.target.closest && e.target.closest('button')) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
       // Extra fingers are ignored rather than allowed to steal the gesture state
       // from the one already tracking a swipe.
       if (touchStart) return;
@@ -2387,8 +2422,9 @@
       var rightSide = e.clientX >= window.innerWidth * 0.5;
       touchStart = {
         id: e.pointerId, x: e.clientX, y: e.clientY,
-        t: performance.now(), rightSide: rightSide, slid: false, jumped: false
+        rightSide: rightSide, slid: false, jumped: false
       };
+      try { stage.setPointerCapture(e.pointerId); } catch (err) { /* synthetic or unsupported pointer */ }
       // Right-side touch starts immediately, matching the physical jump button
       // and making short taps responsive enough for a fast runner.
       if (rightSide) {
@@ -2399,39 +2435,40 @@
     });
     // `slid` means "a gesture has already consumed this touch", whichever
     // direction it went: both swipes must suppress the tap-to-jump, or every
-    // swipe would also queue a jump. The delays also end the tap's hold, so a
-    // swipe can never glide.
+    // swipe would also queue a jump. A swipe ends the jump hold so it cannot glide.
     stage.addEventListener('pointermove', function (e) {
       if (!touchStart || e.pointerId !== touchStart.id || touchStart.slid) return;
       if (!touchStart.rightSide && e.clientY - touchStart.y > SWIPE_DOWN) {
         touchStart.slid = true;
-        endTouch();
-        keys['ArrowDown'] = true;
-        setTimeout(function () { keys['ArrowDown'] = false; }, 520);
+        touchJumpHeld = false;
+        slidePressed();
+        // Keep gestures independent of keyboard holds and use simulation time.
+        gestureDownT = 0.52;
       } else if (!touchStart.rightSide && e.clientX - touchStart.x > SWIPE_RIGHT) {
         touchStart.slid = true;
-        endTouch();
+        touchJumpHeld = false;
         tryDash();
       }
     });
-    stage.addEventListener('pointerup', function (e) {
+    window.addEventListener('pointerup', function (e) {
       if (!touchStart || e.pointerId !== touchStart.id) return;
       var wasSlide = touchStart.slid;
       var jumped = touchStart.jumped;
-      var rightSide = touchStart.rightSide;
       endTouch();
+      if (jumped) { if (game.state === 'playing') cutJump(); return; }
       if (game.state === 'title') { startRun(); return; }
       if (game.state === 'over') { if (game.overFade > 0.5) restart(); return; }
       if (game.state !== 'playing' || wasSlide) return;
-      // Right-side input already jumped on press; release trims the first arc.
       // Left-side taps remain a compatible jump-on-release fallback.
-      if (rightSide) cutJump();
-      else if (!jumped) jumpPressed();
+      jumpPressed();
     });
-    stage.addEventListener('pointercancel', function (e) {
-      if (touchStart && e.pointerId !== touchStart.id) return;
+    function cancelTouch(e) {
+      if (!touchStart || e.pointerId !== touchStart.id) return;
       endTouch();
-    });
+      gestureDownT = 0;
+    }
+    window.addEventListener('pointercancel', cancelTouch);
+    stage.addEventListener('lostpointercapture', cancelTouch);
   }
 
   // -------------------------------------------------------------- touch pad
@@ -2442,20 +2479,21 @@
   // sees them (and the pads are hidden outside a run, see syncPad).
   var padBtns = [];
 
-  /** Press-and-hold wiring: pointerdown/up/cancel/leave, with a held class. */
+  /** Track each button's own finger; release outside the button also counts. */
   function wireHold(el, fn) {
     if (!el) return;
     padBtns.push(el);
     el.addEventListener('pointerdown', function (e) {
       e.preventDefault();
-      if (e.button !== 0 || el._padPointer != null) return;
+      if (game.state !== 'playing' || (e.pointerType === 'mouse' && e.button !== 0) || el._padPointer != null) return;
       el._padPointer = e.pointerId;
-      el.setPointerCapture(e.pointerId);
       el.classList.add('held');
       fn(true);
+      // Capture must never be a prerequisite for accepting the press.
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* window release fallback */ }
     });
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) {
-      el.addEventListener(t, function (e) {
+      (t === 'lostpointercapture' ? el : window).addEventListener(t, function (e) {
         if (el._padPointer !== e.pointerId) return;
         el._padPointer = null;
         if (!el.classList.contains('held')) return;
@@ -2500,6 +2538,7 @@
     wireHold(document.getElementById('padSlide'), function (on) {
       GameAudio.unlock();
       padDown = on;
+      if (on) slidePressed();
     });
     if (hud.padDash) {
       // Tap, not hold: still registered so releasePad can clear its `held`
@@ -2666,6 +2705,7 @@
   }
 
   function resetWorld() {
+    resetInput();
     obstacles.length = 0; pickups.length = 0; powerups.length = 0;
     RouteDirector.reset();
     Experience.reset(styleRecord());
@@ -2735,6 +2775,7 @@
   function setPause(on) {
     if (on && game.state === 'playing') {
       game.state = 'paused';
+      resetInput();
       GameAudio.duckBgm(true);
       setSelecting(true);
       showPauseCard(true);
@@ -3088,6 +3129,16 @@
     // ---- player horizontal is fixed; only vertical simulation
     player.runT += dt;
 
+    // Accept press edges even when a tap was released between frames.
+    if (player.buffer <= 0 && jumpFollowup > 0) {
+      player.buffer = jumpFollowup;
+      jumpFollowup = 0;
+    }
+    jumpFollowup = Math.max(0, jumpFollowup - dt);
+    var downRequested = downHeld() || slideBuffer > 0;
+    slideBuffer = Math.max(0, slideBuffer - dt);
+    gestureDownT = Math.max(0, gestureDownT - dt);
+
     // jump buffering / coyote
     if (player.buffer > 0) player.buffer -= dt;
     if (player.coyote > 0) player.coyote -= dt;
@@ -3102,12 +3153,8 @@
     // slide state. Dashing overrides the slide: a dash low to the ground still
     // covers more than a slide does, so keeping the slide box would only shrink
     // the hitbox without changing anything the player can see.
-    var wantSlide = downHeld() && player.onGround && player.dashT === 0;
-    if (wantSlide && !player.sliding) {
-      player.sliding = true; player.slideT = 0;
-      GameAudio.sfx('slide');
-      burst(camX + PLAYER_X - 20, player.y, { n: 8, col: ['#bff4ff', '#8fd8ff'], sp0: 40, sp1: 170, dir: Math.PI, spread: 0.8, r0: 2, r1: 6, g: 300, l0: .2, l1: .5 });
-    }
+    var wantSlide = downRequested && player.onGround && player.dashT === 0;
+    if (wantSlide) beginSlide();
     if (player.sliding) {
       player.slideT += dt;
       if (!downHeld() && player.slideT > SLIDE_MIN) player.sliding = false;
@@ -3161,12 +3208,12 @@
               (player.vy > 0 ? player.fallMul : player.riseMul);
       // Stomp arming: ↓ is held while falling. The resolution itself happens in
       // the collision pass below, where a real obstacle box is available.
-      player.stompArm = downHeld() && player.vy > 0;
+      player.stompArm = downRequested && player.vy > 0;
       // Glide: hold jump past the apex. ↓ always wins — the check below turns a
       // held ↓ into the ordinary fast-fall, so a glide can never strand the
       // runner in the air with no way down.
       var wasGliding = player.gliding;
-      player.gliding = jumpHeld() && player.vy > 0 && !downHeld() &&
+      player.gliding = jumpHeld() && player.vy > 0 && !downRequested &&
         player.glideT < glideMax();
       if (player.gliding) {
         if (!wasGliding) {
@@ -3176,7 +3223,7 @@
         player.glideT += dt;
         g *= GLIDE_G;
       }
-      if (downHeld() && player.vy > 0) g *= FASTFALL_MUL;
+      if (downRequested && player.vy > 0) g *= FASTFALL_MUL;
       player.vy += g * dt;
       // A glide is a terminal-velocity descent, not a hover: without the clamp
       // the reduced gravity would still accumulate into a slam on a long fall.
@@ -3188,6 +3235,8 @@
         player.y = landedAt; player.groundY = landedAt;
         player.vy = 0;
         player.onGround = true;
+        // Apply a landing-time slide before the collision pass, not one frame later.
+        if (downRequested && player.dashT === 0) beginSlide();
         player.jumps = 0;
         player.landingT=.18;
         player.gravMul = 1;
@@ -3680,7 +3729,7 @@
     var on = game.state === 'playing';
     if (lastHud.padOn !== on) {
       hud.pad.classList.toggle('hide', !on);
-      if (!on) releasePad();
+      if (!on) resetInput();
       lastHud.padOn = on;
     }
     if (hud.padDash && lastHud.padCharges !== player.charges) {
