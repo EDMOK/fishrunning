@@ -265,6 +265,18 @@
 
   // ------------------------------------------------------------------ one-shots
   var SFX = {
+    clear: function(n){
+      var f=660*Math.pow(1.0595,Math.min(n||0,12));
+      tone({type:'triangle',f0:f,dur:.065,vol:.1,atk:.003});
+      tone({type:'sine',f0:f*1.5,dur:.10,vol:.08,delay:.045});
+    },
+    achievement: function(){
+      [0,4,7,12].forEach(function(n,i){tone({type:'triangle',f0:587*Math.pow(1.0595,n),dur:.16,vol:.13,delay:i*.065});});
+    },
+    spotlight: function(){
+      [0,7,12,16,19].forEach(function(n,i){tone({type:'triangle',f0:523*Math.pow(1.0595,n),dur:.2,vol:.13,delay:i*.065});});
+      tone({type:'sine',f0:1046,f1:1568,dur:.5,vol:.08,delay:.2});
+    },
     jump: function () {
       tone({ type: 'square', f0: 300, f1: 680, dur: 0.15, vol: 0.24, atk: 0.003 });
       tone({ type: 'triangle', f0: 150, f1: 340, dur: 0.13, vol: 0.18 });
@@ -380,6 +392,15 @@
       [0, 7, 12].forEach(function (s, i) {
         tone({ type: 'triangle', f0: 784 * Math.pow(1.0595, s), dur: 0.16, vol: 0.14, delay: 0.05 + i * 0.04 });
       });
+    },
+
+    spring: function () {
+      tone({type:'triangle',f0:180,f1:980,dur:.23,vol:.15,exp:false});
+      tone({type:'sine',f0:1568,dur:.13,vol:.09,delay:.15});
+    },
+    cargo: function () {
+      noise({filter:'lowpass',f0:1500,f1:240,dur:.12,vol:.12,q:.6});
+      [659,880,1318].forEach(function(f,i){tone({type:'triangle',f0:f,dur:.12,vol:.09,delay:i*.055});});
     },
 
     /** Glide: soft air under the feet. Quiet on purpose — it can run a while. */

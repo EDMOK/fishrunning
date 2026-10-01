@@ -41,7 +41,7 @@ TIER_START = [0, 2200, 5200, 9800, 17000]
 # Mirrors OBS_MIN_TIER in src/game.js.
 MIN_TIER = {'patrol': 0, 'crystals': 0, 'mine': 0,
             'drone': 2, 'turret': 2,
-            'gate': 3, 'sentry': 3}
+            'gate': 3, 'sentry': 3, 'cargo': 1, 'spring': 1, 'buoy': 2}
 
 # The obstacle pools, straight from src/game.js. Section 1b uses these instead of
 # MIN_TIER, because the pools are what actually decide what a pattern may pick.
@@ -51,12 +51,8 @@ TIER3 = TIER2 + ['turret', 'gate', 'sentry']
 
 
 def pool_for_tier(t):
-    """Mirror of legalAt() in src/game.js."""
-    if t <= 1:
-        return TIER1
-    if t == 2:
-        return TIER2
-    return TIER3
+    """Available through legalAt() OR a dedicated shared route pattern."""
+    return [kind for kind, floor in MIN_TIER.items() if floor <= t]
 # Tier at which each multi-obstacle pattern first appears. Must mirror the `min`
 # field of the same pattern in src/game.js PATTERNS.
 PATTERN_TIER = {'slide-then-wall': 2, 'stomp-chain': 2, 'dash-lane': 3, 'pair': 4}

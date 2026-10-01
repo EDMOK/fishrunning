@@ -27,3 +27,7 @@
 ## 2026-10-01 sunset coast assets
 
 `raw/coast/` and `assets/coast/` contain game assets generated with the built-in imagegen tool using the user's attached image as an art-direction reference. They are new background, terrain, hazard, collectible and cyclist images. The heroine sprites and existing UI remain from the existing project. Prompt records and packaging notes are in `docs/coast-art-prompts.md` and `docs/coast-expansion.md`. This provenance record does not grant rights in third-party character or brand elements.
+
+## 2026-10-01 special obstacle assets
+
+`raw/obstacle_special/` contains three independent transparent images created with the built-in imagegen tool: a rice cargo crab, a whale-tail spring and a transforming warning buoy. Their runtime sprites are `assets/obstacle/new/cargo.png`, `spring.png` and `buoy.png`. Full prompts are recorded in `docs/special-obstacle-art-prompts.json`; `tools/build_special_obstacles.py` preserves alpha and aspect ratio while packaging them. These images are game-compositing assets without a HUD or background.

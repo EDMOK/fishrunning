@@ -2,7 +2,7 @@
 (function(global){
   'use strict';
   var api;
-  var scene={id:'coast',name:'夕阳海岸公路',tag:'SUNSET COAST',at:36000,startTime:360,layers:null,
+  var scene={id:'coast',name:'夕阳海岸公路',tag:'SUNSET COAST',at:36000,startTime:270,layers:null,
     rule:null,ruleText:'跳跃、滑铲与冲刺 · 沿途收集白饭',
     line:'鲸鱼娘跑在海岸高架，鹈鹕骑行在远处的公路。',mascot:'deepseek',
     goal:{kind:'rice',target:15,label:'收集白饭'},src:'游戏原创场景'};
@@ -46,7 +46,7 @@
     api=bridge;
     var strip=document.querySelector('.zoneStrip');
     strip.innerHTML='<span class="zchip">语料海</span><em>›</em><span class="zchip">榜单擂台</span><em>›</em><span class="zchip">开源市集</span><em>›</em><span class="zchip">算力金库</span><em>›</em><span class="zchip">合规边境</span><em>›</em><span class="zchip coastChip">☀ 夕阳公路</span>';
-    var desc=document.createElement('p');desc.id='coastDescription';desc.textContent='城市长跑约 6 分钟 · 穿过晚霞，驶入夕阳公路';strip.after(desc);
+    var desc=document.createElement('p');desc.id='coastDescription';desc.textContent='城市长跑约 4 分 30 秒 · 穿过晚霞，驶入夕阳公路';strip.after(desc);
   }
   global.DSCoast={scene:scene,skin:skin,drawBackground:drawBackground,mount:mount};
 })(window);

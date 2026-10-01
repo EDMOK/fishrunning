@@ -8,30 +8,38 @@ const assert=require('node:assert/strict'),fs=require('node:fs');
  async function start(){await page.goto('http://127.0.0.1:8123/');await page.waitForFunction(()=>window.DSGame&&document.querySelector('#loading.hide'),null,{polling:100});await page.evaluate(()=>__step(2));await page.locator('#btnStart').dispatchEvent('click');}
  async function frozenCheck(key){await page.keyboard.press(key);const before=await page.evaluate(()=>({t:DSGame.world().runElapsed,cam:DSGame.world().camX,time:DSGame.world().time}));await page.evaluate(()=>__step(60));assert.deepEqual(await page.evaluate(()=>({t:DSGame.world().runElapsed,cam:DSGame.world().camX,time:DSGame.world().time})),before);await page.keyboard.press(key);}
  await start();const transitions=[],stages=[],phaseCounts={};let paused=false,shopped=false,cityShot=false,coastShot=false;
- for(let i=0;i<900;i++){
+ for(let i=0;i<1000;i++){
   const s=await page.evaluate(()=>{DSGame.state().lives=3;DSGame.player().invuln=999;__step(10);const w=DSGame.world();return {zone:w.zone,elapsed:w.runElapsed,dist:w.dist,tier:w.tier,transition:w.transition,notice:w.coastApproachShown,patterns:DSGame.patternCounts(),audit:DSGame.audit()};});
   if(!transitions.length||transitions.at(-1).zone!==s.zone)transitions.push({zone:s.zone,elapsed:s.elapsed,dist:s.dist});
   if(!stages.length||stages.at(-1).tier!==s.tier)stages.push({tier:s.tier,elapsed:s.elapsed});
-  if(s.elapsed<300)assert.notEqual(s.zone,5,'Sunset entered before five minutes');
+  if(s.elapsed<240)assert.notEqual(s.zone,5,'Sunset entered before four minutes');
   assert.equal(s.audit.length,0,'Runtime obstacle audit');
   if(!paused&&s.elapsed>165){await frozenCheck('p');paused=true;}
   if(!shopped&&s.elapsed>240){await frozenCheck('b');shopped=true;}
   if(!cityShot&&s.elapsed>200){await page.screenshot({path:'docs/city-expanded-gameplay.png'});cityShot=true;}
   if(!phaseCounts.city&&s.zone===5)phaseCounts.city=s.patterns;
-  if(s.zone===5&&s.elapsed<362)assert.ok(s.transition>0,'Expected gradual handoff');
-  if(!coastShot&&s.zone===5&&s.elapsed>368){await page.screenshot({path:'docs/coast-gameplay.png'});assert.equal(s.transition,0);coastShot=true;}
-  if(s.elapsed>430){phaseCounts.total=s.patterns;break;}
+  if(s.zone===5&&s.elapsed<272)assert.ok(s.transition>0,'Expected gradual handoff');
+  if(!coastShot&&s.zone===5&&s.elapsed>278){await page.screenshot({path:'docs/coast-gameplay.png'});assert.equal(s.transition,0);coastShot=true;}
+  if(s.elapsed>390){phaseCounts.total=s.patterns;break;}
  }
- assert.deepEqual(transitions.map(s=>s.zone),[0,1,2,3,4,5]);const entry=transitions.at(-1);assert.ok(entry.elapsed>=360&&entry.elapsed<361);
- const newIds=['islands-zigzag','islands-stairs','islands-valley','broken-road','pit-and-island','pit-landing-hop','upper-staircase','platform-wave','upper-or-hop','obstacle-rhythm','slide-jump-shuffle','patrol-slalom','rice-fan','rice-switchback','rice-double-arc'];
+ assert.deepEqual(transitions.map(s=>s.zone),[0,1,2,3,4,5]);const entry=transitions.at(-1);assert.ok(entry.elapsed>=270&&entry.elapsed<271);
+ const newIds=['islands-zigzag','islands-stairs','islands-valley','broken-road','pit-and-island','pit-landing-hop','upper-staircase','platform-wave','upper-or-hop','obstacle-rhythm','slide-jump-shuffle','patrol-slalom','rice-fan','rice-switchback','rice-double-arc','cargo-payday','spring-vault','signal-choice','cargo-signal-duet','signal-hop-chain','spring-pit-relay','signal-pit-finish'];
  const cityNew=newIds.filter(id=>phaseCounts.city[id]),coastNew=newIds.filter(id=>(phaseCounts.total[id]||0)>(phaseCounts.city[id]||0));assert.ok(cityNew.length>=12);assert.ok(coastNew.length>=6);
+ const specialPatterns={cargo:['cargo-payday','cargo-signal-duet','signal-pit-finish'],spring:['spring-vault','spring-pit-relay'],buoy:['signal-choice','cargo-signal-duet','signal-hop-chain','signal-pit-finish']};
+ const specialCoverage={city:[],coast:[]};
+ for(const [kind,ids] of Object.entries(specialPatterns)){
+  if(ids.some(id=>phaseCounts.city[id]))specialCoverage.city.push(kind);
+  if(ids.some(id=>(phaseCounts.total[id]||0)>(phaseCounts.city[id]||0)))specialCoverage.coast.push(kind);
+ }
+ assert.equal(specialCoverage.city.length,3,'All new device types must actually occur in the city');
+ assert.equal(specialCoverage.coast.length,3,'All new device types must actually occur on the coast');
  // Continuous dash pressure proves distance cannot shorten the city chapter.
  await page.reload();await page.waitForFunction(()=>window.DSGame&&document.querySelector('#loading.hide'),null,{polling:100});await page.locator('#btnStart').dispatchEvent('click');let fastEntry=null;
  for(let i=0;i<740;i++){
   const s=await page.evaluate(()=>{DSGame.state().lives=3;DSGame.player().invuln=999;DSGame.player().dashT=999;__step(10);const w=DSGame.world();return {zone:w.zone,elapsed:w.runElapsed,dist:w.dist};});
-  if(s.elapsed<360)assert.notEqual(s.zone,5);
+  if(s.elapsed<270)assert.notEqual(s.zone,5);
   if(s.zone===5){fastEntry=s;break;}
- }assert.ok(fastEntry&&fastEntry.elapsed>=360&&fastEntry.elapsed<361);
+ }assert.ok(fastEntry&&fastEntry.elapsed>=270&&fastEntry.elapsed<271);
  assert.equal(errors.length,0);assert.equal(missing.length,0);assert.equal(warnings.length,0);
- const report={entry,fastEntry,transitions,stages,pauseFrozen:paused,shopFrozen:shopped,cityNew,coastNew,phaseCounts,errors,warnings,missing};fs.writeFileSync('docs/coast-verification.json',JSON.stringify(report,null,2));console.log(JSON.stringify({...report,phaseCounts:undefined},null,2));await browser.close();
+ const report={entry,fastEntry,transitions,stages,pauseFrozen:paused,shopFrozen:shopped,cityNew,coastNew,specialCoverage,phaseCounts,errors,warnings,missing};fs.writeFileSync('docs/coast-verification.json',JSON.stringify(report,null,2));console.log(JSON.stringify({...report,phaseCounts:undefined},null,2));await browser.close();
 })().catch(e=>{console.error(e);process.exit(1);});

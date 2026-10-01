@@ -131,8 +131,8 @@
     *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important}
   }
 </style>
-<link rel="stylesheet" href="src/art-direction.css?v=20260930-sky2">
-<link rel="stylesheet" href="src/coast.css?v=20261001-paced">
+<link rel="stylesheet" href="src/art-direction.css">
+<link rel="stylesheet" href="src/coast.css">
 </head>
 <body>
 <div id="fit">
@@ -173,6 +173,12 @@
 
       <div id="shopNotice" class="panel"></div>
 
+      <div id="heroMoment" class="panel" aria-label="鲸鱼娘高光进度">
+        <div class="heroFace"><img id="heroFace" data-asset="hero/idle" alt="鲸鱼娘"></div>
+        <div class="heroMomentBody"><div class="heroMomentHead"><b id="runBeat">轻快起步</b><span id="styleChain">0 连突破</span></div>
+          <div id="heroMessage">连续突破 5 道 · 0/5</div>
+          <div class="sparkMeter"><i id="sparkFill"></i></div></div>
+      </div>
       <div id="combo">
         <div id="comboRing"></div>
         <div id="comboNum">x1</div>
@@ -203,7 +209,7 @@
           <button class="bigbtn ghost jsFs hide" id="btnFullCard"><span class="fsIco"><i></i></span>全屏</button>
           <a class="bigbtn ghost" id="btnBili" href="https://www.bilibili.com/video/BV1D9aW6KEaZ/" target="_blank" rel="noopener noreferrer" title="在哔哩哔哩观看"><svg class="biliIco" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7.6" width="18" height="12.4" rx="3.6"/><path d="M6.6 4.4 10 7.9M17.4 4.4 14 7.9"/><path d="M9.2 12.6v3.4M14.8 12.6v3.4"/></svg>B站视频</a>
         </div>
-        <div class="start">也可以按 空格 / Enter 出发</div>
+        <div class="start">漂亮过关积攒高光 · 连续突破，触发 8 秒鲸跃时刻</div>
 
         <div class="keybar">
           <span class="kb"><b>空格</b>跳跃 · 二段跳</span>
@@ -241,6 +247,7 @@
             <div id="bestLine"></div>
           </div>
 
+          <div id="skillSummary" class="skillSummary"></div>
           <div id="deathReason" class="deathReason" role="status"></div>
 
           <div id="goStats">
@@ -287,8 +294,10 @@
 
 <script src="src/memes.js"></script>
 <script src="src/audio.js"></script>
-<script src="src/coast.js?v=20261001-longrun"></script>
-<script src="src/route-patterns.js?v=20261001"></script>
-<script src="src/game.js?v=20261001-route4"></script>
+<script src="src/coast.js"></script>
+<script src="src/obstacle-specials.js"></script>
+<script src="src/experience.js"></script>
+<script src="src/route-patterns.js"></script>
+<script src="src/game.js"></script>
 </body>
 </html>

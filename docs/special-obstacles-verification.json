@@ -1,0 +1,198 @@
+{
+  "cases": [
+    {
+      "name": "cargo-dash",
+      "lives": 3,
+      "rice": 9,
+      "clear": 1,
+      "styles": {
+        "dash": true
+      },
+      "dead": true,
+      "bounced": false,
+      "dropped": true,
+      "lootMax": 6,
+      "hit": null
+    },
+    {
+      "name": "cargo-jump",
+      "lives": 3,
+      "rice": 0,
+      "clear": 1,
+      "styles": {
+        "jump": true
+      },
+      "dead": false,
+      "bounced": false,
+      "dropped": false,
+      "lootMax": 0,
+      "hit": null
+    },
+    {
+      "name": "cargo-stomp",
+      "lives": 3,
+      "rice": 2,
+      "clear": 1,
+      "styles": {
+        "stomp": true
+      },
+      "dead": true,
+      "bounced": false,
+      "dropped": true,
+      "lootMax": 6,
+      "hit": null
+    },
+    {
+      "name": "spring-top",
+      "lives": 3,
+      "rice": 0,
+      "clear": 1,
+      "styles": {
+        "bounce": true
+      },
+      "dead": false,
+      "bounced": true,
+      "dropped": false,
+      "lootMax": 0,
+      "hit": null
+    },
+    {
+      "name": "spring-side",
+      "lives": 2,
+      "rice": 0,
+      "clear": 0,
+      "styles": {},
+      "dead": false,
+      "bounced": false,
+      "dropped": false,
+      "lootMax": 0,
+      "hit": {
+        "kind": "spring",
+        "hitboxH": 64,
+        "feetY": 600,
+        "vy": 0,
+        "airborne": false,
+        "speed": 322
+      }
+    },
+    {
+      "name": "buoy-hop",
+      "lives": 3,
+      "rice": 0,
+      "clear": 1,
+      "styles": {
+        "jump": true
+      },
+      "dead": false,
+      "bounced": false,
+      "dropped": false,
+      "lootMax": 0,
+      "hit": null
+    },
+    {
+      "name": "buoy-slide",
+      "lives": 3,
+      "rice": 0,
+      "clear": 1,
+      "styles": {
+        "slide": true
+      },
+      "dead": false,
+      "bounced": false,
+      "dropped": false,
+      "lootMax": 0,
+      "hit": null
+    },
+    {
+      "name": "buoy-standing-hit",
+      "lives": 2,
+      "rice": 0,
+      "clear": 0,
+      "styles": {},
+      "dead": false,
+      "bounced": false,
+      "dropped": false,
+      "lootMax": 0,
+      "hit": {
+        "kind": "buoy",
+        "hitboxH": 54,
+        "feetY": 600,
+        "vy": 0,
+        "airborne": false,
+        "speed": 346
+      }
+    },
+    {
+      "name": "sunset-cargo-dash",
+      "lives": 3,
+      "rice": 387,
+      "clear": 1,
+      "styles": {
+        "dash": true
+      },
+      "dead": true,
+      "bounced": false,
+      "dropped": true,
+      "lootMax": 6,
+      "hit": null
+    },
+    {
+      "name": "sunset-spring-top",
+      "lives": 3,
+      "rice": 387,
+      "clear": 2,
+      "styles": {
+        "dash": true,
+        "bounce": true
+      },
+      "dead": false,
+      "bounced": true,
+      "dropped": false,
+      "lootMax": 0,
+      "hit": null
+    },
+    {
+      "name": "sunset-buoy-hop",
+      "lives": 3,
+      "rice": 387,
+      "clear": 3,
+      "styles": {
+        "dash": true,
+        "bounce": true,
+        "jump": true
+      },
+      "dead": false,
+      "bounced": false,
+      "dropped": false,
+      "lootMax": 0,
+      "hit": null
+    },
+    {
+      "name": "sunset-buoy-slide",
+      "lives": 3,
+      "rice": 387,
+      "clear": 4,
+      "styles": {
+        "dash": true,
+        "bounce": true,
+        "jump": true,
+        "slide": true
+      },
+      "dead": false,
+      "bounced": false,
+      "dropped": false,
+      "lootMax": 0,
+      "hit": null
+    }
+  ],
+  "springFlight": {
+    "foot": 427.67822521343794,
+    "vy": -887.7839477981502,
+    "jumps": 1
+  },
+  "sunsetSpeed": 664.9999530638697,
+  "errors": [],
+  "warnings": [],
+  "missing": [],
+  "pauseFreezesBuoy": true
+}

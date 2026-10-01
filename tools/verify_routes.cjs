@@ -10,6 +10,7 @@ const api={rand,randInt:ri,pick:a=>a[Math.floor(random()*a.length)],scale:()=>Ma
  addTrackGap:(x,w)=>{const g={x,w};gaps.push(g);return g;},addRice:(x,y,kind='rice')=>rice.push({x,y,kind}),
  addRiceLine:(x,y,n,dx)=>{for(let i=0;i<n;i++)rice.push({x:x+i*dx,y});},
  addRiceArc:(x,y,n,dx)=>{for(let i=0;i<n;i++)rice.push({x:x+i*dx,y:y-Math.sin(i/Math.max(1,n-1)*Math.PI)*(dx*.55+26)});}};
+api.addRiskLine=api.addRiceLine;
 const director=sandbox.window.DSRoutePatterns.create(api);
 function reachable(speed){
  if(!gaps.length)return true;
@@ -35,16 +36,16 @@ function reachable(speed){
 const report={layouts:0,jumpChecks:0,variants:{},families:{}};
 for(const p of director.patterns){
  const signatures=new Set();
- for(const b of [450,550,665]){if(p.min>=2&&b<550)continue;base=b;
+ for(const b of (p.id==='jump-duet'?[367,450,550,665]:[450,550,665])){if(p.min>=2&&b<550&&p.id!=='slide-hop-triplet')continue;base=b;
   for(let n=0;n<100;n++){
    ob=[];plats=[];gaps=[];rice=[];p.build(1000);report.layouts++;
    signatures.add(JSON.stringify({ob,plats,gaps,rice}));
    assert.ok(rice.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)));
    for(const speed of [base*.7,base,base*1.45]){
     if(!reachable(speed)){fs.writeFileSync('docs/route-failure.json',JSON.stringify({pattern:p.id,speed,base,plats,gaps},null,2));throw Error(`${p.id}: unreachable platform route at speed ${speed}`);}report.jumpChecks++;
-    for(const o of ob){if(o.float)continue;
+    for(const o of ob){if(o.float||(o.kind==='buoy'&&o.mode==='slide'))continue;
       const width=o.box.w+2*(o.motion||({patrol:22,mine:24}[o.kind]||0));
-      const h=o.h-o.box.y+({mine:26,patrol:5}[o.kind]||0);
+      const h=o.h-o.box.y+({mine:26,patrol:5,cargo:3}[o.kind]||0);
       const enter=(1020-Math.sqrt(1020**2-4400*h))/2200,exit=1020/2200+Math.sqrt(2*(1020**2/4400-h)/(2200*1.55));
       const budget=Math.sqrt(320*speed)*(exit-enter)-53-30;
       assert.ok(width<=budget,`${p.id}/${o.kind}: ${width} > ${budget.toFixed(1)} at ${speed}`);

@@ -232,6 +232,28 @@ body{color:var(--ink)}
 }
 #zonePlaque.banner{border-color:#f0d9a8;background:rgba(253,243,224,.95)}
 
+/* A small, readable route thumbnail: links fill toward the next scene so the
+   long timed coast entrance is visible before its scenery starts blending in. */
+#routeProgress{
+  position:absolute;left:50%;top:16px;transform:translateX(-50%);
+  width:360px;padding:8px 12px 9px;z-index:2;pointer-events:none;
+}
+.routeHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;
+  color:var(--ink-3);font-size:10px;font-weight:800;letter-spacing:.08em}
+#routeNext{color:var(--blue);font-size:10px;font-weight:800;letter-spacing:0;white-space:nowrap}
+#routeTrack{display:flex;align-items:flex-start;width:100%;}
+.routeStop{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:38px;color:var(--ink-3);font-size:9px;font-weight:700;line-height:1.1;white-space:nowrap}
+.routeStop>i{display:block;width:10px;height:10px;border-radius:50%;background:#dbe8f1;border:2px solid #fff;box-shadow:0 0 0 1px #c8dae6;z-index:1;transition:background-color .2s,box-shadow .2s,transform .2s}
+.routeStop em{font-style:normal;transform:translateX(0)}
+.routeStop.current{color:var(--blue)}
+.routeStop.current>i{background:var(--blue);box-shadow:0 0 0 3px var(--blue-soft),0 0 0 4px var(--blue);transform:scale(1.05)}
+.routeStop.done{color:var(--ink-2)}
+.routeStop.done>i{background:var(--green);box-shadow:0 0 0 1px var(--green)}
+.routeStop.next{color:var(--gold)}
+.routeStop.next>i{background:#fff3d7;box-shadow:0 0 0 1px var(--gold-bright)}
+.routeLink{position:relative;display:block;flex:1;height:10px;margin:0 -1px;z-index:0;border-top:2px solid #dbe8f1}
+.routeLink i{display:block;width:100%;height:2px;margin-top:-2px;transform-origin:left center;transform:scaleX(0);background:linear-gradient(90deg,var(--green),var(--blue));transition:transform .2s}
+
 #eventBanner{
   position:absolute;right:16px;top:96px;width:382px;max-width:382px;box-sizing:border-box;
   display:flex;align-items:center;gap:12px;padding:10px 14px;
@@ -676,3 +698,34 @@ body{color:var(--ink)}
   #shopDismiss{width:44px;height:44px}
   #btnShopClose{min-height:48px}
 }
+/* A character-led performance cue, kept above the playable horizon. */
+#heroMoment{position:absolute;left:420px;top:16px;width:390px;height:64px;box-sizing:border-box;display:flex;align-items:center;gap:9px;padding:5px 12px 5px 5px;overflow:hidden;border-color:#cde5f5;background:rgba(249,253,255,.94)}
+.heroFace{position:relative;flex:0 0 60px;width:60px;height:54px;border-radius:12px;overflow:hidden;background:#e4f3fc}
+.heroFace img{position:absolute;width:148px;max-width:none;height:auto;left:-61px;top:-11px}
+.heroMomentBody{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.heroMomentHead{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;line-height:1.3}
+#runBeat{color:#347eb3;white-space:nowrap}
+#styleChain{color:#a77625;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+#heroMessage{font-size:11px;line-height:1.35;color:#58748c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sparkMeter{height:4px;overflow:hidden;border-radius:4px;background:#dcecf5}
+#sparkFill{display:block;height:100%;width:100%;background:#62acd7;transform:scaleX(0);transform-origin:left;transition:transform .16s linear}
+#heroMoment[data-phase="pressure"]{border-color:#edc3c9}
+#heroMoment[data-phase="pressure"] #runBeat{color:#bf6075}
+#heroMoment.spotlight{border-color:#efcc77;background:#fff8e9}
+#heroMoment.spotlight #runBeat{color:#b57b13}
+#heroMoment.spotlight #sparkFill{background:#efb147}
+#heroMoment.spotlight .heroFace{background:#fff0c6}
+.skillSummary{display:flex;align-items:center;gap:12px;text-align:left;width:100%;box-sizing:border-box;margin:8px 0 10px;padding:10px 14px;border:1px solid #dce8f0;border-radius:14px;background:#f5faff}
+.skillRank{font-size:38px;line-height:1;color:#c28e2c;min-width:35px;text-align:center}
+.skillSummary div{display:flex;flex-direction:column;gap:2px}
+.skillSummary strong{font-size:16px;color:#346e9c}
+.skillSummary span{font-size:11px;color:#58748c}
+.skillSummary small{font-size:11px;color:#9e742e}
+@media(prefers-reduced-motion:reduce){#sparkFill{transition:none}}
+/* Keep the two central HUD cards as one vertical planning stack: the upper
+   card describes the current run, while the lower card answers "where next?". */
+#heroMoment{left:50%;top:16px;transform:translateX(-50%);width:390px}
+#routeProgress{left:50%;top:88px;transform:translateX(-50%);width:326px;padding:7px 10px;box-sizing:border-box}
+#routeProgress .routeHead{margin-bottom:5px}
+#cardOver .stat{box-sizing:border-box;min-height:44px;padding:6px 12px}
+#cardOver .overContent{padding:18px 34px 20px}

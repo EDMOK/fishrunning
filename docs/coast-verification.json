@@ -1,13 +1,13 @@
 {
   "entry": {
     "zone": 5,
-    "elapsed": 360.49999999983646,
-    "dist": 274488.54080738715
+    "elapsed": 270.4999999999183,
+    "dist": 176826.11937624938
   },
   "fastEntry": {
     "zone": 5,
-    "elapsed": 360.4499999998365,
-    "dist": 513442.59406373015
+    "elapsed": 270.44999999991836,
+    "dist": 347781.4644015197
   },
   "transitions": [
     {
@@ -17,28 +17,28 @@
     },
     {
       "zone": 1,
-      "elapsed": 50.499999999997776,
-      "dist": 27712.13653680017
+      "elapsed": 38.49999999999846,
+      "dist": 18280.4847543613
     },
     {
       "zone": 2,
-      "elapsed": 110.00000000003361,
-      "dist": 72986.0496877143
+      "elapsed": 83.00000000001212,
+      "dist": 47040.34750168016
     },
     {
       "zone": 3,
-      "elapsed": 180.00000000000063,
-      "dist": 130618.66643254757
+      "elapsed": 135.00000000004155,
+      "dist": 81312.71578492495
     },
     {
       "zone": 4,
-      "elapsed": 260.4999999999274,
-      "dist": 195262.26823575931
+      "elapsed": 195.49999999998653,
+      "dist": 125189.11193143638
     },
     {
       "zone": 5,
-      "elapsed": 360.49999999983646,
-      "dist": 274488.54080738715
+      "elapsed": 270.4999999999183,
+      "dist": 176826.11937624938
     }
   ],
   "stages": [
@@ -48,19 +48,19 @@
     },
     {
       "tier": 1,
-      "elapsed": 25.499999999999194
+      "elapsed": 15.49999999999976
     },
     {
       "tier": 2,
-      "elapsed": 70.00000000000178
+      "elapsed": 40.499999999998344
     },
     {
       "tier": 3,
-      "elapsed": 140.000000000037
+      "elapsed": 85.00000000001371
     },
     {
       "tier": 4,
-      "elapsed": 230.4999999999547
+      "elapsed": 150.0000000000279
     }
   ],
   "pauseFrozen": true,
@@ -68,102 +68,118 @@
   "cityNew": [
     "islands-zigzag",
     "islands-stairs",
-    "islands-valley",
-    "broken-road",
-    "pit-and-island",
     "pit-landing-hop",
-    "upper-staircase",
-    "platform-wave",
     "upper-or-hop",
     "obstacle-rhythm",
+    "slide-jump-shuffle",
+    "rice-fan",
+    "rice-switchback",
+    "rice-double-arc",
+    "cargo-payday",
+    "spring-vault",
+    "signal-choice",
+    "cargo-signal-duet",
+    "signal-hop-chain",
+    "spring-pit-relay",
+    "signal-pit-finish"
+  ],
+  "coastNew": [
+    "platform-wave",
+    "upper-or-hop",
     "slide-jump-shuffle",
     "patrol-slalom",
     "rice-fan",
     "rice-switchback",
-    "rice-double-arc"
+    "rice-double-arc",
+    "cargo-payday",
+    "spring-vault",
+    "signal-choice",
+    "cargo-signal-duet",
+    "spring-pit-relay",
+    "signal-pit-finish"
   ],
-  "coastNew": [
-    "islands-zigzag",
-    "islands-stairs",
-    "islands-valley",
-    "broken-road",
-    "pit-and-island",
-    "pit-landing-hop",
-    "upper-staircase",
-    "platform-wave",
-    "patrol-slalom",
-    "rice-fan",
-    "rice-switchback",
-    "rice-double-arc"
-  ],
+  "specialCoverage": {
+    "city": [
+      "cargo",
+      "spring",
+      "buoy"
+    ],
+    "coast": [
+      "cargo",
+      "spring",
+      "buoy"
+    ]
+  },
   "phaseCounts": {
     "city": {
-      "single": 6,
-      "rice-fan": 8,
-      "wave-trail": 8,
-      "rice": 7,
-      "platform-wave": 5,
-      "fork-trail": 3,
-      "broken-road": 7,
-      "rice-double-arc": 7,
-      "cloud-bridge": 5,
-      "islands-zigzag": 6,
-      "upper-staircase": 6,
-      "island-hop": 5,
+      "single": 4,
+      "rice-fan": 6,
+      "wave-trail": 4,
+      "rush-ribbon": 10,
+      "rice": 3,
+      "cargo-payday": 6,
+      "spring-vault": 7,
+      "choice": 3,
+      "jump-duet": 3,
+      "islands-zigzag": 2,
+      "signal-choice": 4,
       "rice-switchback": 8,
-      "obstacle-rhythm": 2,
-      "moving-mine": 2,
-      "float": 2,
-      "pit-and-island": 6,
-      "upper-or-hop": 6,
-      "choice": 2,
-      "islands-valley": 5,
-      "tall": 3,
-      "pit-landing-hop": 3,
-      "patrol-slalom": 3,
-      "sweep-and-hop": 4,
-      "dash-lane": 1,
-      "slide-then-wall": 3,
-      "slide-jump-shuffle": 1,
-      "glide-trail": 4,
-      "pair": 1,
+      "rice-double-arc": 6,
+      "glide-trail": 6,
+      "cloud-bridge": 1,
+      "tall": 1,
+      "slide-hop-triplet": 2,
+      "obstacle-rhythm": 3,
+      "cargo-signal-duet": 2,
+      "fork-trail": 1,
       "stomp-chain": 1,
-      "islands-stairs": 2,
-      "slide-corridor": 1
+      "slide-jump-shuffle": 1,
+      "signal-hop-chain": 1,
+      "signal-pit-finish": 3,
+      "sweep-and-hop": 1,
+      "spring-pit-relay": 1,
+      "islands-stairs": 1,
+      "upper-or-hop": 1,
+      "pit-landing-hop": 1,
+      "pair": 1,
+      "slide-then-wall": 1
     },
     "total": {
-      "single": 7,
-      "rice-fan": 10,
-      "wave-trail": 10,
-      "rice": 8,
-      "platform-wave": 6,
-      "fork-trail": 3,
-      "broken-road": 8,
-      "rice-double-arc": 8,
-      "cloud-bridge": 6,
-      "islands-zigzag": 7,
-      "upper-staircase": 7,
-      "island-hop": 6,
-      "rice-switchback": 10,
-      "obstacle-rhythm": 2,
-      "moving-mine": 2,
-      "float": 2,
-      "pit-and-island": 7,
-      "upper-or-hop": 6,
-      "choice": 2,
-      "islands-valley": 6,
-      "tall": 4,
-      "pit-landing-hop": 4,
-      "patrol-slalom": 4,
-      "sweep-and-hop": 5,
-      "dash-lane": 1,
-      "slide-then-wall": 6,
-      "slide-jump-shuffle": 1,
-      "glide-trail": 6,
-      "pair": 1,
+      "single": 4,
+      "rice-fan": 11,
+      "wave-trail": 5,
+      "rush-ribbon": 14,
+      "rice": 5,
+      "cargo-payday": 7,
+      "spring-vault": 9,
+      "choice": 3,
+      "jump-duet": 5,
+      "islands-zigzag": 2,
+      "signal-choice": 5,
+      "rice-switchback": 9,
+      "rice-double-arc": 9,
+      "glide-trail": 8,
+      "cloud-bridge": 1,
+      "tall": 2,
+      "slide-hop-triplet": 3,
+      "obstacle-rhythm": 3,
+      "cargo-signal-duet": 5,
+      "fork-trail": 1,
       "stomp-chain": 1,
-      "islands-stairs": 3,
-      "slide-corridor": 2
+      "slide-jump-shuffle": 3,
+      "signal-hop-chain": 1,
+      "signal-pit-finish": 4,
+      "sweep-and-hop": 1,
+      "spring-pit-relay": 3,
+      "islands-stairs": 1,
+      "upper-or-hop": 3,
+      "pit-landing-hop": 1,
+      "pair": 1,
+      "slide-then-wall": 1,
+      "float": 1,
+      "slide-corridor": 1,
+      "platform-wave": 1,
+      "patrol-slalom": 1
     }
   },
   "errors": [],

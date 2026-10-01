@@ -1,6 +1,6 @@
 {
-  "layouts": 3700,
-  "jumpChecks": 11100,
+  "layouts": 6300,
+  "jumpChecks": 18900,
   "variants": {
     "islands-zigzag": 300,
     "islands-stairs": 200,
@@ -14,24 +14,34 @@
     "obstacle-rhythm": 200,
     "slide-jump-shuffle": 200,
     "patrol-slalom": 200,
+    "jump-duet": 400,
+    "slide-hop-triplet": 300,
+    "rush-ribbon": 300,
+    "cargo-payday": 300,
+    "spring-vault": 300,
+    "signal-choice": 200,
+    "cargo-signal-duet": 200,
+    "signal-hop-chain": 200,
+    "spring-pit-relay": 200,
+    "signal-pit-finish": 200,
     "rice-fan": 300,
     "rice-switchback": 300,
     "rice-double-arc": 300
   },
   "families": {
     "city": {
-      "gap": 644,
-      "obstacle": 229,
-      "reward": 489,
-      "platform": 276,
-      "mixed": 362
+      "obstacle": 319,
+      "mixed": 614,
+      "gap": 475,
+      "reward": 448,
+      "platform": 144
     },
     "coast": {
-      "gap": 639,
-      "platform": 264,
-      "obstacle": 206,
-      "reward": 478,
-      "mixed": 413
+      "obstacle": 290,
+      "mixed": 680,
+      "reward": 445,
+      "gap": 444,
+      "platform": 141
     }
   }
 }

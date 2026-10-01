@@ -1,0 +1,22 @@
+{
+  "logic": "PASS",
+  "encounterPhases": {
+    "flow": {
+      "obstacle": 217,
+      "mixed": 432,
+      "platform": 130,
+      "reward": 373,
+      "gap": 348
+    },
+    "pressure": {
+      "obstacle": 382,
+      "mixed": 681,
+      "reward": 305,
+      "gap": 113,
+      "platform": 19
+    },
+    "release": {
+      "reward": 1500
+    }
+  }
+}

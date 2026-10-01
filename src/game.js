@@ -95,7 +95,7 @@
   var OBS_MIN_TIER = {
     patrol: 0, crystals: 0, mine: 0,
     drone: 2, turret: 2,
-    gate: 3, sentry: 3
+    gate: 3, sentry: 3, cargo: 1, spring: 1, buoy: 2
   };
   function legalAt(t) {
     return ALL_OBSTACLES.filter(function (k) { return OBS_MIN_TIER[k] <= t; });
@@ -103,7 +103,8 @@
 
   // Stomp and dash destroy only breakable ground obstacles; floating and event
   // hazards remain separate threats.
-  var BREAKABLE = { patrol: 1, crystals: 1, mine: 1, drone: 1, turret: 1 };
+  var BREAKABLE = { patrol: 1, crystals: 1, mine: 1, drone: 1, turret: 1, cargo: 1 };
+  var Specials=window.DSObstacleSpecials;
   function breakable(o) {
     return !o.bob && !o.eventHazard && !!BREAKABLE[o.kind];
   }
@@ -138,13 +139,60 @@
   var coastIndex = -1;
   if (Coast) {
     // Complete the original five-district route before the sunset scenery.
-    var cityTimes={city:0,arena:50,market:110,vault:180,wall:260};
+    // City gates run at 75% of the original schedule so the coast arrives at
+    // 4:30 while the last district still has ~75s instead of a 10s blip.
+    var cityTimes={city:0,arena:38,market:83,vault:135,wall:195};
     ZONES = ZONES.map(function(z){return Object.assign({},z,{minRunTime:cityTimes[z.id]||0});})
       .concat([Coast.scene]).sort(function(a,b){return a.at-b.at;});
     coastIndex = ZONES.findIndex(function(z){return z.id==='coast';});
   }
   function isCoast() { return Coast && zoneIdx === coastIndex; }
   function coastBlend() { return isCoast() ? 1-zoneTransition.t : 0; }
+  var reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var Experience=window.DSExperience.create(onPerformanceEvent);
+  function styleRecord(){try{return parseInt(localStorage.getItem('ds_whale_style_best')||'0',10)||0;}catch(e){return 0;}}
+  function onPerformanceEvent(e){
+    if(e.type==='clear'){
+      var earned=Math.round(e.points*scoreMul());game.score+=earned;
+      var labels={jump:'漂亮跳跃',slide:'漂亮滑铲',dash:'冲刺突破',stomp:'精准下砸',gap:'跨越空洞',bounce:'鲸尾借力'};
+      popText(camX+PLAYER_X+65,player.y-205,labels[e.kind]+' +'+earned,'#dfa943',22);
+      GameAudio.sfx('clear',Math.min(e.streak,12));
+      if(e.streak%5===0)player.cheer=.38;
+    }else if(e.type==='medal'){
+      game.score+=e.points;player.cheer=.65;
+      popText(camX+PLAYER_X+150,player.y-265,e.title+' +'+e.points,'#dd8ca5',27);
+      GameAudio.sfx('achievement');
+    }else if(e.type==='spotlight'){
+      player.cheer=.65;
+      popText(camX+PLAYER_X+160,player.y-265,'鲸跃时刻 · 收集与突破得分 ×2','#dfa943',28);
+      burst(camX+PLAYER_X,player.y-90,{n:24,col:['#79b9dc','#f4d58c','#fff'],sp0:90,sp1:280,r0:3,r1:7,l0:.4,l1:.9,g:160});
+      GameAudio.sfx('spotlight');
+    }
+  }
+  function awardClear(o,kind){
+    if(o.styleAwarded)return;o.styleAwarded=true;
+    if(player.invuln>0||game.lives<=0)return;
+    Experience.clear(kind,!!o.precision);
+  }
+  function updatePerformance(){
+    var pb=playerBox(),px=camX+PLAYER_X;
+    obstacles.forEach(function(o){
+      if(o.dead||o.styleAwarded)return;
+      var ob=obstacleBox(o);
+      if(ob.x<pb.x+pb.w+75&&ob.x+ob.w>=pb.x-10){
+        if(player.sliding&&o.bob)o.approachAction='slide';
+        else if(!player.onGround||player.groundY<GROUND_Y-10)o.approachAction='jump';
+      }
+      if(ob.x+ob.w<pb.x-8){
+        if(!o.failed&&o.approachAction)awardClear(o,o.approachAction);
+        else o.styleAwarded=true;
+      }
+    });
+    trackGaps.forEach(function(g){if(!g.styleAwarded&&px>g.x+g.w+55){
+      if(!g.failed)awardClear(g,'gap');else g.styleAwarded=true;
+    }});
+  }
+
 
   // ---- run modifiers -------------------------------------------------------
   // A single place where every event effect lands. Timed events push an entry
@@ -793,7 +841,7 @@
     player.charges--;
     // The last charge is the one that has to regrow; a spare charge keeps its
     // own timer idle so a two-charge build can chain two bursts back to back.
-    if (player.charges <= 0) player.dashCd = DASH_CD;
+    if (player.charges <= 0) player.dashCd = DASH_CD*(Experience.state().spotlightT>0?.55:1);
     player.dashT = DASH_T;
     player.dashGrace = DASH_T + DASH_GRACE;
     player.sliding = false;
@@ -826,6 +874,7 @@
    * for a caller that has already played its own sound.
    */
   function shatter(o, opt) {
+    if(o.dead)return;
     opt = opt || {};
     var mx = opt.atX == null ? o.x + o.w / 2 : opt.atX;
     var my = opt.atY == null ? o.y + o.h / 2 : opt.atY;
@@ -833,11 +882,38 @@
       n: 20, col: ['#8affc1', '#ffffff', '#5ee7ff'],
       sp0: 110, sp1: 430, r0: 3, r1: 9, l0: .3, l1: .7, g: 700, shape: 'square'
     });
-    popText(mx, my - 30, opt.label || '撞碎!', opt.labelCol || '#8affc1', opt.size || 24);
+    popText(mx, my - 30, opt.label || (o.kind==='cargo'?'运粮箱打开!':'撞碎!'), opt.labelCol || '#8affc1', opt.size || 24);
     o.dead = true;
+    if(o.kind==='cargo')spillCargo(o,mx,my);
     o.nearMiss = true;      // gone: the pass-by near-miss reward must not also fire
     if (!opt.silent) GameAudio.sfx('shieldBreak');
     shake(7);
+  }
+
+  function spillCargo(o,x,y){
+    if(o.lootDropped)return;o.lootDropped=true;
+    var k=jumpK();
+    for(var i=0;i<6;i++){
+      var targetX=x+85+i*46*k,targetY=i===3?470:i%2?512:475;
+      var p=addRice(x,y-18,i===3?'bigrice':'rice');
+      p.spill={x:x,y:y-18,toX:targetX,toY:targetY,t:0};
+    }
+    GameAudio.sfx('cargo');
+  }
+
+  function trySpring(o,ob,prevFoot){
+    if(!Specials.canBounce(o,ob,prevFoot,player.y,player.vy))return false;
+    o.springUsed=true;o.compressT=.28;o.nearMiss=true;
+    var k=jumpK();
+    player.y=ob.y;player.vy=-1120*k;player.gravMul=k*k;
+    player.riseMul=1;player.fallMul=FALL_MUL;player.cuttable=false;
+    player.onGround=false;player.sliding=false;player.groundY=GROUND_Y;
+    player.jumps=1;player.buffer=0;player.coyote=0;player.stompArm=false;
+    player.stompChain=0;player.gliding=false;player.glideT=0;
+    burst(o.x+o.w*.5,ob.y,{n:15,col:['#f5ca79','#fff4d3','#79cce9'],sp0:90,sp1:260,
+      dir:-Math.PI/2,spread:1,r0:3,r1:6,l0:.25,l1:.65,g:360});
+    awardClear(o,'bounce');GameAudio.sfx('spring');shake(reducedMotion?2:5);
+    return true;
   }
 
   /**
@@ -885,6 +961,7 @@
       label: chain > 1 ? '连踩 x' + chain + '!' : '踩碎!',
       labelCol: '#ffd166', size: chain > 1 ? 30 : 25, silent: true
     });
+    awardClear(o,'stomp');
     GameAudio.sfx('stomp');
     return true;
   }
@@ -905,7 +982,7 @@
   // PNG path, painted ones become data URLs so the same `<img src>` works.
   var powerIconURL = {};
 
-  var ASSET_VERSION = '20261001-route4';
+  var ASSET_VERSION = '20261001-specials1';
 
   /**
    * The single place an asset URL is built. The preloader and every later
@@ -983,7 +1060,7 @@
     'bg/zones/market': ['sky', 'far', 'mid', 'ground'],
     'bg/zones/vault': ['sky', 'far', 'mid', 'ground'],
     'bg/zones/wall': ['sky', 'far', 'mid', 'ground'],
-    'obstacle/new': ['patrol', 'crystals', 'mine', 'drone', 'turret', 'gate', 'sentry'],
+    'obstacle/new': ['patrol', 'crystals', 'mine', 'drone', 'turret', 'gate', 'sentry', 'cargo', 'spring', 'buoy'],
     platform: ['surface_cloud', 'surface_glass', 'cloud_island'],
     coast: ['sky', 'road', 'cone', 'barrier', 'sweeper', 'gull', 'pelican'],
     mascot: ['deepseek', 'qwen', 'zhipu', 'claude', 'gpt', 'gemini']
@@ -1127,7 +1204,6 @@
     // cycle already uses, so a dash reads as "the run sped up", not as a
     // separate state the art does not have.
     if (player.dashT > 0) return player.onGround ? 'run_c' : 'jump';
-    if (player.cheer > 0) return 'cheer';
     if (!player.onGround) {
       // A glide holds the arms-out pose for as long as it lasts, which is what
       // tells the player the stamina is still paying for the float.
@@ -1137,6 +1213,7 @@
       return 'apex';
     }
     if (player.sliding) return 'slide';
+    if (player.cheer > 0 && game.state==='playing') return 'cheer';
     // Stand still whenever the game is not running. Without this the heroine is
     // left frozen mid-stride behind the card picker, which reads as "the run is
     // still going" no matter how dimmed the backdrop is.
@@ -1170,6 +1247,8 @@
     if (o.kind === 'drone') { dx = Math.sin(t * .8) * 34; dy = Math.sin(t) * (o.bob || 16); }
     if (o.kind === 'sentry') dx = Math.sin(t * .7) * 14;
     if (o.kind === 'turret' && o.recoil > 0) dx = o.recoil * 35;
+    var specialPose=Specials.pose(o,worldT);
+    if(specialPose){dx=specialPose.dx;dy=specialPose.dy;}
     if (o.motion) dx = Math.sin(t * 1.15) * o.motion;
     return { x: o.x + dx, y: o.y + dy, dx: dx, dy: dy };
   }
@@ -1179,7 +1258,9 @@
   }
   function updateMovingHazards(dt) {
     obstacles.forEach(function (o) {
-      if (o.dead || o.kind !== 'turret') return;
+      if(o.dead)return;
+      Specials.update(o,dt,o.x-camX-PLAYER_X);
+      if(o.kind!=='turret')return;
       o.recoil = Math.max(0, (o.recoil || 0) - dt);
       var lead = o.x - camX - PLAYER_X;
       if (lead < 260 || lead > 850) return;
@@ -1211,6 +1292,7 @@
     });
     ctx.restore();
   }
+  var pickupFxT=-1;
   var pickupArtIndex = 0, PICKUP_ART = ['rice', 'rice', 'datacard', 'rice', 'spark'];
   var gen = { x: 1500, sincePower: 0 };
 
@@ -1233,6 +1315,7 @@
       phase: rand(0, 6.28),
       eventHazard: !!opts.eventHazard, nearMiss: false
     };
+    Specials.init(o,opts);
     o.box = { x: x + cfg.x, y: o.y + cfg.y, w: cfg.w, h: cfg.h };
     obstacles.push(o);
     return o;
@@ -1339,6 +1422,8 @@
   function recoverFromGap() {
     var worldX = camX + PLAYER_X;
     var gap = gapAt(worldX);
+    if(gap)gap.failed=true;
+    if(player.invuln>0)Experience.miss();
     var safeX = gap ? gap.x + gap.w + 90 : worldX + 260;
     var skip = Math.max(0, safeX - worldX);
     if (skip > 0) { camX += skip; dist += skip; }
@@ -1356,7 +1441,7 @@
   // learned before the speed and the trickier patterns arrive.
   function tier() {
     var distanceTier=dist<2200?0:dist<5200?1:dist<9800?2:dist<17000?3:4;
-    var timeTier=runElapsed<25?0:runElapsed<70?1:runElapsed<140?2:runElapsed<230?3:4;
+    var timeTier=runElapsed<15?0:runElapsed<40?1:runElapsed<85?2:runElapsed<150?3:4;
     return Math.min(distanceTier,timeTier);
   }
 
@@ -1611,7 +1696,7 @@
     // Reserve enough reach for the strongest existing slowdown event.
     scale:function(){return Math.sqrt(speedAt(dist)*.7/BASE_SPEED);},
     addObstacle:addObstacle,addRice:addRice,addRiceArc:addRiceArc,addRiceLine:addRiceLine,
-    addPlatform:addPlatform,addTrackGap:addTrackGap,hint:hint
+    addPlatform:addPlatform,addTrackGap:addTrackGap,addRiskLine:addRiskLine,hint:hint
   });
   PATTERNS = PATTERNS.concat(RouteDirector.patterns);
 
@@ -1623,7 +1708,10 @@
     stomp: '空中按住 ↓ 下砸，踩碎障碍',
     glide: '到最高点后按住跳跃键滑翔',
     dash: 'Shift 冲刺，撞碎小障碍',
-    gap: '前方跑道断开，连续跳上云岛'
+    gap: '前方跑道断开，连续跳上云岛',
+    cargo: '运粮蟹车：跳过避让，冲刺或下砸开箱',
+    spring: '鲸尾弹簧：落在顶面借力，侧面撞击会受伤',
+    buoy: '警戒浮标：看清箭头，位置锁定后跳跃或下滑'
   };
 
   function hint(kind, x) { hints.push({ kind: kind, x: x }); }
@@ -1671,8 +1759,10 @@
       var t = tier();
       var pool = PATTERNS.filter(function(p){return p.min<=t && (runElapsed>=25||RouteDirector.family(p)!=='gap');});
       var transition = Coast && runElapsed>=Coast.scene.startTime-8 && runElapsed<Coast.scene.startTime+8;
+      var arrivalTime=runElapsed+Math.max(0,gen.x-camX-PLAYER_X)/Math.max(speed,BASE_SPEED);
+      var rhythm=Experience.phase(arrivalTime);
       var p = !Object.keys(patternCounts).length ? PATTERNS[0] : RouteDirector.choose(pool,{
-        recent:recentPatterns,tier:t,coast:isCoast(),transition:transition
+        recent:recentPatterns,tier:t,coast:isCoast(),transition:transition,phase:rhythm,spotlight:Experience.state().spotlightT>0
       });
       recentPatterns.push(p.id);
       if (recentPatterns.length > Math.min(5, pool.length - 1)) recentPatterns.shift();
@@ -1949,7 +2039,27 @@
         ctx.globalAlpha=blend;ctx.drawImage(skinArt,sx+o.cfg.x,pose.y+o.cfg.y,o.cfg.w,o.cfg.h);
         ctx.globalAlpha=blend*(.3+.35*(1+Math.sin(worldT*6+o.phase))/2);
         ctx.fillStyle='#ffe3a1';ctx.beginPath();ctx.arc(sx+o.w*.5,pose.y+8,4,0,Math.PI*2);ctx.fill();ctx.restore();
+      } else if(o.kind==='spring'&&o.compressT>0){
+        var drawH=o.h*(1-.24*o.compressT/.28);
+        ctx.drawImage(o.img,sx,pose.y+o.h-drawH,o.w,drawH);
       } else ctx.drawImage(o.img,sx,pose.y);
+      if(o.kind==='buoy'){
+        ctx.save();
+        var signalAlpha=o.locked?.72:.35+.3*Math.sin(worldT*12);
+        ctx.fillStyle='rgba(255,205,110,'+signalAlpha+')';
+        ctx.beginPath();ctx.arc(sx+o.w*.25,pose.y+10,4,0,Math.PI*2);
+        ctx.arc(sx+o.w*.75,pose.y+10,4,0,Math.PI*2);ctx.fill();
+        if(o.armed&&!o.locked){
+          var targetY=o.y-(o.mode==='slide'?Specials.slideLift:0);
+          ctx.strokeStyle='rgba(250,185,90,.7)';ctx.lineWidth=2;ctx.setLineDash([5,5]);
+          ctx.strokeRect(sx+o.cfg.x,targetY+o.cfg.y,o.cfg.w,o.cfg.h);
+        }
+        ctx.restore();
+      }
+      if(o.kind==='spring'&&o.springUsed&&o.compressT>0){
+        ctx.save();ctx.globalAlpha=o.compressT/.28;ctx.strokeStyle='#f4cd82';ctx.lineWidth=3;
+        ctx.beginPath();ctx.ellipse(sx+o.w*.5,pose.y+10,o.w*(.6+.8*(1-o.compressT/.28)),9,0,0,Math.PI*2);ctx.stroke();ctx.restore();
+      }
       if (o.kind === 'turret' && o.attackT > 0 && o.attackT < .85) {
         ctx.save();
         ctx.strokeStyle = 'rgba(233,100,123,' + (.3 + o.attackT * .6) + ')';
@@ -1958,18 +2068,20 @@
         ctx.lineTo(sx - 210, pose.y + o.h * .36); ctx.stroke(); ctx.restore();
       }
       // The cue follows the obstacle rather than the screen, so two quick beats
-      // remain distinguishable. It is decoration only: the hitbox never changes.
+      // remain distinguishable. A buoy's arrow previews its final locked position.
       var lead = sx - PLAYER_X;
-      if (game.state === 'playing' && lead > 90 && lead < 920) {
+      var cueRange=o.kind==='buoy'?1240:920;
+      if (game.state === 'playing' && lead > 90 && lead < cueRange) {
         var slide = !!o.bob;
-        var alpha = Math.min(1, (920 - lead) / 180, (lead - 90) / 100);
+        var alpha = Math.min(1, (cueRange - lead) / 180, (lead - 90) / 100);
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.textAlign = 'center';
         ctx.font = '800 20px "M PLUS Rounded 1c",sans-serif';
         var cue = slide ? (o.motion ? '↔ 滑铲' : '↓ 滑铲') :
           (o.motion ? '↔ 跳跃' : '↑ 跳跃');
-        var cueY = slide ? GROUND_Y - 13 : Math.max(260, o.y - 22);
+        cue=Specials.cue(o)||cue;
+        var cueY = slide ? GROUND_Y - 13 : Math.max(260, pose.y - 22);
         var cueW = ctx.measureText(cue).width + 24;
         var left = sx + o.w / 2 - cueW / 2, top = cueY - 25;
         ctx.fillStyle = 'rgba(255,255,255,.9)';
@@ -1993,11 +2105,21 @@
   }
 
   function drawPlayer() {
-    if (player.invuln > 0 && Math.floor(player.invuln * 14) % 2 === 0) return;
+    var blink=player.invuln>0&&Math.floor(player.invuln*14)%2===0;
     var f = heroFrame();
     var img = IMG['hero/' + f];
     var meta = HERO_FRAMES[f];
     ctx.save();
+    if(blink)ctx.globalAlpha=.58;
+    if(Experience.state().spotlightT>0){
+      ctx.save();ctx.globalAlpha=.28;ctx.strokeStyle='#f4d58c';ctx.lineWidth=3;
+      ctx.beginPath();ctx.ellipse(PLAYER_X,player.y-82,100,110,0,0,Math.PI*2);ctx.stroke();ctx.restore();
+      for(var star=0;star<5;star++){
+        var angle=worldT*2+star*Math.PI*.4;
+        var xx=PLAYER_X+Math.cos(angle)*105,yy=player.y-85+Math.sin(angle)*93;
+        ctx.fillStyle=star%2?'#fff':'#f4d58c';ctx.font='16px sans-serif';ctx.fillText('✦',xx,yy);
+      }
+    }
     if (player.shield || player.power.chip > 0) {
       var cy = player.y - 92;
       var rad = 108;
@@ -2013,7 +2135,10 @@
     var w = img.naturalWidth, h = img.naturalHeight;
     var dx = PLAYER_X - w / 2;
     var dy = player.y - h * meta.g;
-    ctx.drawImage(img, dx, dy, w, h);
+    var bounce=player.onGround&&!player.sliding&&game.state==='playing'&&!reducedMotion?Math.sin(player.runT*22)*.012:0;
+    var landing=(!reducedMotion&&player.landingT>0)?Math.sin(player.landingT/.18*Math.PI)*.07:0;
+    ctx.translate(PLAYER_X,player.y);ctx.scale(1.06+landing,1.06+bounce-landing);
+    ctx.drawImage(img,dx-PLAYER_X,dy-player.y,w,h);
     ctx.restore();
   }
 
@@ -2443,6 +2568,10 @@
     hud.emblem = document.getElementById('emblem');
     hud.titleBest = document.getElementById('titleBest');
     hud.btns = document.getElementById('btns');
+    hud.heroMoment=document.getElementById('heroMoment');
+    hud.heroFace=document.getElementById('heroFace');hud.runBeat=document.getElementById('runBeat');
+    hud.heroMessage=document.getElementById('heroMessage');hud.styleChain=document.getElementById('styleChain');
+    hud.sparkFill=document.getElementById('sparkFill');
   }
 
   function loadBest() {
@@ -2539,9 +2668,11 @@
   function resetWorld() {
     obstacles.length = 0; pickups.length = 0; powerups.length = 0;
     RouteDirector.reset();
+    Experience.reset(styleRecord());
+    player.landingT=0;
     shots.length = 0; recentPatterns.length = 0; recentObstacleKinds.length = 0; pickupBag.length = 0;
     platforms.length = 0; trackGaps.length = 0;
-    pickupArtIndex = 0;
+    pickupArtIndex = 0;pickupFxT=-1;
     riskLines = {}; riskLineId = 0;
     particles.length = 0; floats.length = 0;
     camX = 0; dist = 0; speed = BASE_SPEED; worldT = 0;
@@ -2672,6 +2803,10 @@
     // would otherwise freeze on screen with a dead countdown. The zone plaque
     // deliberately stays — it is part of the summary.
     hideEventBanner();
+    var performance=Experience.summary();
+    try{localStorage.setItem('ds_whale_style_best',String(Math.max(styleRecord(),performance.bestStreak)));}catch(e){}
+    var ss=document.getElementById('skillSummary');
+    ss.innerHTML='<b class="skillRank">'+performance.rank+'</b><div><strong>'+performance.title+'</strong><span>最高 '+performance.bestStreak+' 连突破 · '+performance.styles+' 种动作 · '+performance.spotlights+' 次鲸跃时刻</span><small>'+ (performance.recordBroken?'创造了新的连段纪录！':'下次目标：多连过一道障碍')+'</small></div>';
     var sc = Math.floor(game.score);
     var isBest = sc > game.best;
     if (isBest) { game.best = sc; saveBest(sc); }
@@ -2729,7 +2864,7 @@
     var horizontal = Math.max(0, Math.max(ob.x - (pb.x + pb.w), pb.x - (ob.x + ob.w)));
     var vertical = Math.max(0, Math.max(ob.y - (pb.y + pb.h), pb.y - (ob.y + ob.h)));
     if (horizontal > 92 || vertical > 55 || aabb(pb, ob)) return;
-    o.nearMiss = true;
+    o.nearMiss = true;o.precision=true;
     progressGoal('nearMiss');
     game.score += 18 * scoreMul();
     game.comboT = Math.max(game.comboT, comboDuration() * 0.55);
@@ -2750,8 +2885,11 @@
       shatter(o, player.power.chip > 0 ? null : { label: '冲刺撞碎!', labelCol: '#8affc1' });
       game.score += DASH_SCORE * scoreMul();
       game.rice += riceGain(1, mulOf('riceMul'));
+      if(player.dashT>0||player.dashGrace>0)awardClear(o,'dash');
       return;
     }
+    o.failed=true;
+    Experience.miss();
     if (player.shield) {
       player.shield = false;
       player.invuln = 1.1;
@@ -2795,6 +2933,7 @@
         if (line.intact) {
           game.score += 60;
           popText(p.x, p.y - 72, '完整收集 +60', '#ffd166', 25);
+          for(var spark=0;spark<6;spark++)Experience.pickup();
           GameAudio.sfx('combo', 1);
         }
         delete riskLines[p.riskLine];
@@ -2803,7 +2942,8 @@
     var previousMult = comboMult();
     bumpCombo();
     var mult = comboMult();
-    var gain = Math.round((big ? 50 : 10) * mult * mulOf('riceMul') * scoreMul());
+    var gain = Math.round((big ? 50 : 10) * mult * mulOf('riceMul') * scoreMul()*(Experience.state().spotlightT>0?2:1));
+    Experience.pickup();
     game.score += gain;
     game.rice += riceGain(big ? 5 : 1, mulOf('riceMul'));
 
@@ -2817,7 +2957,9 @@
       n: big ? 18 : 9, col: RICE_COL, sp0: 60, sp1: big ? 330 : 200,
       r0: 2, r1: big ? 8 : 5, l0: .25, l1: .6, g: 620
     });
-    popText(p.x, p.y - 16, '+' + gain, big ? '#ffd166' : '#ffffff', big ? 28 : 22);
+    if(big||worldT-pickupFxT>.12){
+      popText(p.x,p.y-16,'+'+gain,big?'#ffd166':'#ffffff',big?28:22);pickupFxT=worldT;
+    }
 
     if (!mobileRender) {
       hud.riceCount.classList.remove('pop');
@@ -2885,6 +3027,7 @@
 
     // Active play time excludes title, pause, shop and game-over time.
     runElapsed += dt;
+    Experience.update(dt);
     if (Coast && !coastApproachShown &&
         runElapsed >= Coast.scene.startTime - 8) {
       coastApproachShown = true;
@@ -3046,6 +3189,7 @@
         player.vy = 0;
         player.onGround = true;
         player.jumps = 0;
+        player.landingT=.18;
         player.gravMul = 1;
         player.riseMul = 1; player.fallMul = FALL_MUL;
         player.cuttable = false;
@@ -3092,17 +3236,21 @@
       var o = obstacles[i];
       if (o.dead || o.x - camX < -260) { obstacles.splice(i, 1); continue; }
       var ob = obstacleBox(o);
+      if(o.kind==='spring'&&o.springUsed)continue;
       if (aabb(pb, ob)) {
         // A stomp is resolved before damage: landing on a lid is a reward, and
         // `travel` (not `speed`) is what the near-miss window below must use,
         // because a dashing frame covers almost twice the ground.
-        if (!tryStomp(o, ob, prevFoot)) { o.nearMiss = true; damage(o); }
+        if(trySpring(o,ob,prevFoot)){pb=playerBox();}
+        else if (!tryStomp(o, ob, prevFoot)) { o.failed=true;o.nearMiss = true; damage(o); }
       } else if (ob.x + ob.w <= pb.x + pb.w && ob.x + ob.w >= pb.x + pb.w - speed * dt - 10) {
         rewardNearMiss(o);
       }
     }
 
-    var magnetOn = player.power.magnet > 0;
+    updatePerformance();
+    var spotlightOn=Experience.state().spotlightT>0;
+    var magnetOn = player.power.magnet > 0 || spotlightOn;
     var px = camX + PLAYER_X, py = player.y - 84;
 
     for (var j = pickups.length - 1; j >= 0; j--) {
@@ -3120,6 +3268,11 @@
         if (p.pop > 0.5) pickups.splice(j, 1);
         continue;
       }
+      if(p.spill){
+        var f=p.spill;f.t=Math.min(1,f.t+dt/.38);var e=1-Math.pow(1-f.t,2);
+        p.x=f.x+(f.toX-f.x)*e;p.y=f.y+(f.toY-f.y)*e-Math.sin(f.t*Math.PI)*55;
+        if(f.t>=1)p.spill=null;
+      }
       if (magnetOn) {
         var dx = px - p.x, dy = py - p.y;
         var d2 = dx * dx + dy * dy;
@@ -3130,6 +3283,7 @@
           p.y += dy * pull * 3;
         }
       }
+      if(p.spill&&p.spill.t<.35)continue; // Let the crate fan visibly open before collection.
       var cdx = px - p.x, cdy = (player.y - 86) - p.y;
       if (cdx * cdx + cdy * cdy < (p.r + RICE_REACH) * (p.r + RICE_REACH)) collectRice(p);
     }
@@ -3158,6 +3312,7 @@
     if (player.wince > 0) player.wince -= dt;
     if (player.invuln > 0) player.invuln -= dt;
     if (player.cheer > 0) player.cheer -= dt;
+    player.landingT=Math.max(0,(player.landingT||0)-dt);
     if (player.shock > 0) player.shock -= dt;
   }
 
@@ -3180,6 +3335,17 @@
   // --------------------------------------------------------------------- HUD
   var lastHud = {};
   function updateHud() {
+    var es=Experience.state(),phase=Experience.phase(runElapsed),lit=es.spotlightT>0;
+    var momentSig=phase+'|'+lit+'|'+Math.ceil(es.spotlightT)+'|'+es.streak+'|'+Math.floor(es.charge)+'|'+es.mood+'|'+(es.messageT>0?es.message:Experience.goal());
+    if(lastHud.moment!==momentSig){
+      hud.heroMoment.classList.toggle('spotlight',lit);hud.heroMoment.dataset.phase=phase;
+      hud.runBeat.textContent=lit?'鲸跃时刻 · '+Math.ceil(es.spotlightT)+'s':{warmup:'轻快起步',flow:'准备连段',pressure:'连续挑战',release:'白饭补给'}[phase];
+      hud.heroFace.src=assetURL('hero/'+es.mood);
+      hud.styleChain.textContent=es.streak+' 连突破';
+      hud.heroMessage.textContent=es.messageT>0?es.message:Experience.goal();
+      hud.sparkFill.style.transform='scaleX('+(lit?es.spotlightT/8:es.charge/100).toFixed(3)+')';
+      lastHud.moment=momentSig;
+    }
     var sc = Math.floor(game.score);
     if (lastHud.score !== sc) { hud.score.textContent = sc; lastHud.score = sc; }
     if (lastHud.rice !== game.rice) { hud.riceCount.textContent = game.rice; lastHud.rice = game.rice; }
@@ -3287,6 +3453,22 @@
       '<span id="zoneGoal"></span>';
     hudEl.appendChild(cx.zone);
 
+    // Compact route thumbnail: the player can see the next scene without
+    // covering the runner or turning the full title itinerary into a second HUD.
+    cx.route = document.createElement('div');
+    cx.route.id = 'routeProgress';
+    cx.route.className = 'panel';
+    cx.route.setAttribute('aria-label', '场景进度');
+    cx.route.innerHTML = '<div class="routeHead"><span>场景进度</span><b id="routeNext"></b></div>' +
+      '<div id="routeTrack"></div>';
+    hudEl.appendChild(cx.route);
+    var routeTrack = cx.route.querySelector('#routeTrack');
+    ZONES.forEach(function (zone, i) {
+      if (i) routeTrack.insertAdjacentHTML('beforeend', '<span class="routeLink"><i></i></span>');
+      routeTrack.insertAdjacentHTML('beforeend', '<span class="routeStop" data-route="' + i + '"><i></i><em>' + zone.name + '</em></span>');
+    });
+    cx.routeNext = document.getElementById('routeNext');
+
     // event banner, upper middle-right so it never covers the runner
     cx.banner = document.createElement('div');
     cx.banner.id = 'eventBanner';
@@ -3351,7 +3533,45 @@
 
   function hideEventBanner() { cx.banner.classList.remove('on'); }
 
+  function updateRouteProgress() {
+    if (!cx.route) return;
+    var current = Math.max(0, zoneIdx);
+    var next = current + 1 < ZONES.length ? current + 1 : -1;
+    var progress = 1;
+    if (next >= 0) {
+      var nextZone = ZONES[next];
+      if (next === coastIndex) {
+        progress = clamp((runElapsed - (nextZone.startTime - 8)) / 8, 0, 1);
+      } else {
+        var currentAt = ZONES[current].at || 0;
+        var distanceProgress = clamp((dist - currentAt) / Math.max(1, (nextZone.at || currentAt + 1) - currentAt), 0, 1);
+        var timeProgress = nextZone.minRunTime ? clamp(runElapsed / nextZone.minRunTime, 0, 1) : 1;
+        progress = Math.min(distanceProgress, timeProgress);
+      }
+    }
+    cx.route.querySelectorAll('.routeStop').forEach(function (el, i) {
+      el.classList.toggle('done', i < current);
+      el.classList.toggle('current', i === current);
+      el.classList.toggle('next', i === next);
+    });
+    cx.route.querySelectorAll('.routeLink').forEach(function (el, i) {
+      var fill = i < current ? 1 : i === current ? progress : 0;
+      el.querySelector('i').style.transform = 'scaleX(' + fill.toFixed(3) + ')';
+    });
+    if (next >= 0) {
+      var distanceRemaining = Math.max(0, ((nextZone.at || 0) - dist) / Math.max(1, speed));
+      var timeRemaining = nextZone.minRunTime ? Math.max(0, nextZone.minRunTime - runElapsed) : 0;
+      var remaining = next === coastIndex ? Math.max(0, nextZone.startTime - runElapsed) :
+        Math.max(distanceRemaining, timeRemaining);
+      cx.routeNext.textContent = '下一站 ' + ZONES[next].name + ' · ' +
+        (remaining < 60 ? Math.ceil(remaining) + '秒' : Math.ceil(remaining / 60) + '分钟');
+    } else {
+      cx.routeNext.textContent = '路线完成';
+    }
+  }
+
   function updateContentHud() {
+    updateRouteProgress();
     // zone plaque
     var z = ZONES[zoneIdx];
     if (z) {
@@ -3603,7 +3823,9 @@
     // a pattern that is never picked and a hint that never fires look exactly
     // like a run that simply did not get that far.
     patternCounts: function () { return patternCounts; },
-    hints: function () { return { pending: hints, seen: seenHints }; }
+    hints: function () { return { pending: hints, seen: seenHints }; },
+    experience:function(){return Experience.state();},
+    performance:function(){return Experience.summary();}
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

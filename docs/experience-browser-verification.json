@@ -1,0 +1,24 @@
+{
+  "earned": {
+    "rank": "B",
+    "title": "流畅起步",
+    "bestStreak": 10,
+    "clears": 10,
+    "styles": 3,
+    "spotlights": 1,
+    "medals": [
+      "clean5",
+      "variety3"
+    ],
+    "recordBroken": true
+  },
+  "summary": "B流畅起步最高 10 连突破 · 3 种动作 · 1 次鲸跃时刻创造了新的连段纪录！",
+  "pauseFrozen": true,
+  "hitBreaksStreak": true,
+  "invulnerabilityCannotEarn": true,
+  "restartResets": true,
+  "errors": [],
+  "missing": [],
+  "mobileTouchJump": true,
+  "mobileHudNoOverlap": true
+}
