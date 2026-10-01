@@ -23,3 +23,7 @@
 
 - 源码、构建脚本和文档：见根目录 `LICENSE`，采用 MIT License。
 - 运行时图片：仅在权利人明确授权的范围内使用；本文件不授予超出该范围的权利。
+
+## 2026-10-01 sunset coast assets
+
+`raw/coast/` and `assets/coast/` contain game assets generated with the built-in imagegen tool using the user's attached image as an art-direction reference. They are new background, terrain, hazard, collectible and cyclist images. The heroine sprites and existing UI remain from the existing project. Prompt records and packaging notes are in `docs/coast-art-prompts.md` and `docs/coast-expansion.md`. This provenance record does not grant rights in third-party character or brand elements.

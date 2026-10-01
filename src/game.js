@@ -134,6 +134,18 @@
   var ZONES = (M && M.ZONES) || [{ id: 'city', name: '', at: 0, layers: null, rule: null, mascot: 'deepseek' }];
   var EVENTS = (M && M.EVENTS) || [];
   var SHOP_SKILLS = (M && M.SHOP_SKILLS) || [];
+  var Coast = window.DSCoast || null;
+  var coastIndex = -1;
+  if (Coast) {
+    // Complete the original five-district route before the sunset scenery.
+    var cityTimes={city:0,arena:50,market:110,vault:180,wall:260};
+    ZONES = ZONES.map(function(z){return Object.assign({},z,{minRunTime:cityTimes[z.id]||0});})
+      .concat([Coast.scene]).sort(function(a,b){return a.at-b.at;});
+    coastIndex = ZONES.findIndex(function(z){return z.id==='coast';});
+  }
+  function isCoast() { return Coast && zoneIdx === coastIndex; }
+  function coastBlend() { return isCoast() ? 1-zoneTransition.t : 0; }
+
   // ---- run modifiers -------------------------------------------------------
   // A single place where every event effect lands. Timed events push an entry
   // here and pop it when they expire; shop upgrades live in skillLevels. All
@@ -441,6 +453,7 @@
 
   // ---- zone director -------------------------------------------------------
   var zoneIdx = -1, zoneBannerT = 0, zoneBanner = '';
+  var runElapsed = 0, coastApproachShown = false;
   var zoneTransition = { from: -1, t: 0 };
   var zoneGoal = null, completedGoals = 0;
 
@@ -458,7 +471,10 @@
 
   function zoneAt() {
     var z = 0;
-    for(var i=0;i<ZONES.length;i++)if(dist>=ZONES[i].at)z=i;
+    for (var i = 0; i < ZONES.length; i++) {
+      if (i === coastIndex) { if(runElapsed >= Coast.scene.startTime) z=i; }
+      else if (dist >= ZONES[i].at && runElapsed >= (ZONES[i].minRunTime || 0)) z = i;
+    }
     return z;
   }
 
@@ -511,6 +527,7 @@
   }
 
   function fireEvent() {
+    if(Coast && Math.abs(runElapsed-Coast.scene.startTime)<10)return false;
     // Never overwrite a running modifier or its expiry handle with the next event.
     if (eventDef && eventT > 0) return false;
     var pool = EVENTS.filter(function (e) {
@@ -888,7 +905,7 @@
   // PNG path, painted ones become data URLs so the same `<img src>` works.
   var powerIconURL = {};
 
-  var ASSET_VERSION = '20261001-events1';
+  var ASSET_VERSION = '20261001-coast1';
 
   /**
    * The single place an asset URL is built. The preloader and every later
@@ -968,13 +985,14 @@
     'bg/zones/wall': ['sky', 'far', 'mid', 'ground'],
     'obstacle/new': ['patrol', 'crystals', 'mine', 'drone', 'turret', 'gate', 'sentry'],
     platform: ['surface_cloud', 'surface_glass', 'cloud_island'],
+    coast: ['sky', 'road', 'cone', 'barrier', 'sweeper', 'gull', 'pelican'],
     mascot: ['deepseek', 'qwen', 'zhipu', 'claude', 'gpt', 'gemini']
   };
   var OPTIONAL_CATS = { 'bg/zones/arena': 1, 'bg/zones/market': 1, 'bg/zones/vault': 1,
     'bg/zones/wall': 1, platform: 1, mascot: 1 };
   // Keep alpha-heavy parallax layers lossless: lossy WebP leaves pale matte
   // fringes around the cutout skyline when it is composited over the sky.
-  var ASSET_EXT = { bg: '.webp',
+  var ASSET_EXT = { 'coast/sky': '.webp', bg: '.webp',
     'bg/far': '.png', 'bg/mid': '.png',
     'bg/zones/arena': '.webp', 'bg/zones/arena/far': '.png', 'bg/zones/arena/mid': '.png',
     'bg/zones/market': '.webp', 'bg/zones/market/far': '.png', 'bg/zones/market/mid': '.png',
@@ -1691,7 +1709,7 @@
   }
 
   function drawSkyZone(i, alpha) {
-    var sky = imgOr(backdropKey(i, 'sky')) || IMG['bg/sky'];
+    var sky = i === coastIndex && Coast ? IMG['coast/sky'] : imgOr(backdropKey(i, 'sky')) || IMG['bg/sky'];
     var drift = Math.sin(worldT * 0.16) * 8;
     ctx.globalAlpha = alpha;
     ctx.drawImage(sky, 0, drift - 8, VW, VH);
@@ -1705,6 +1723,14 @@
   }
 
   function drawBackdropZone(i, alpha) {
+    if (Coast && i === coastIndex) {
+      var road = IMG['coast/road'], off = camX % road.naturalWidth;
+      ctx.save(); ctx.globalAlpha = alpha;
+      ctx.beginPath();ctx.rect(-VIEW_W,GROUND_Y,VIEW_W*3,VH/ZOOM);
+      trackGaps.forEach(function(gap){ctx.rect(gap.x-camX,GROUND_Y,gap.w,VH/ZOOM);});ctx.clip('evenodd');
+      for (var x=-off; x<VIEW_W; x+=road.naturalWidth) ctx.drawImage(road,x,GROUND_Y);
+      ctx.restore(); return;
+    }
     var far = backdropKey(i, 'far');
     var mid = backdropKey(i, 'mid');
     drawLayer(far.slice(3), 0.10, GROUND_Y + 30, 0.58 * alpha);
@@ -1738,7 +1764,16 @@
 
   /** A bright, illustrated track cap laid over the continuous ground art. */
   function drawTrackSurface() {
-    var i=zoneIdx,alpha=1;
+    if(zoneTransition.t>0 && zoneTransition.from>=0)drawTrackSurfaceZone(zoneTransition.from,zoneTransition.t);
+    drawTrackSurfaceZone(zoneIdx,zoneTransition.from>=0?1-zoneTransition.t:1);
+  }
+  function drawTrackSurfaceZone(i,alpha) {
+    if (Coast && i===coastIndex) {
+      ctx.save();ctx.globalAlpha=alpha;ctx.beginPath();ctx.rect(-VIEW_W,GROUND_Y-8,VIEW_W*3,VH/ZOOM);
+      trackGaps.forEach(function(gap){ctx.rect(gap.x-camX,GROUND_Y-8,gap.w,VH/ZOOM);});ctx.clip('evenodd');
+      ctx.strokeStyle='rgba(255,211,126,' + (.55 + Math.sin(worldT*2)*.14) + ')'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(0,GROUND_Y); ctx.lineTo(VIEW_W,GROUND_Y); ctx.stroke(); ctx.restore(); return;
+    }
     var key = (ZONES[i] && ['arena','vault','wall'].indexOf(ZONES[i].id)>=0)
       ? 'platform/surface_glass' : 'platform/surface_cloud';
     var src = imgOr(key);
@@ -1894,7 +1929,15 @@
         ctx.fill();
         ctx.globalAlpha = 1;
       }
-      ctx.drawImage(o.img,sx,pose.y);
+      var coastSkin = isCoast() && Coast.skin(o.kind);
+      var skinArt = coastSkin && IMG['coast/' + coastSkin];
+      if (skinArt) {
+        var blend=coastBlend();ctx.save();
+        ctx.globalAlpha=1-blend;ctx.drawImage(o.img,sx,pose.y);
+        ctx.globalAlpha=blend;ctx.drawImage(skinArt,sx+o.cfg.x,pose.y+o.cfg.y,o.cfg.w,o.cfg.h);
+        ctx.globalAlpha=blend*(.3+.35*(1+Math.sin(worldT*6+o.phase))/2);
+        ctx.fillStyle='#ffe3a1';ctx.beginPath();ctx.arc(sx+o.w*.5,pose.y+8,4,0,Math.PI*2);ctx.fill();ctx.restore();
+      } else ctx.drawImage(o.img,sx,pose.y);
       if (o.kind === 'turret' && o.attackT > 0 && o.attackT < .85) {
         ctx.save();
         ctx.strokeStyle = 'rgba(233,100,123,' + (.3 + o.attackT * .6) + ')';
@@ -2054,6 +2097,7 @@
     ctx.translate(WORLD_OX, WORLD_OY);
     ctx.scale(ZOOM, ZOOM);
 
+    if (Coast) Coast.drawBackground(ctx,coastBlend());
     drawWorldBackdrop();
     drawTrackSurface();
     drawTrackGaps();
@@ -2491,6 +2535,7 @@
     gen.x = 1500; gen.sincePower = 0;
     // A fresh run must not inherit the last run's zone, event or modifiers.
     zoneIdx = -1; zoneBannerT = 0; zoneBanner = '';
+    runElapsed = 0; coastApproachShown = false;
     genEvent.next = 2400; genEvent.count = 0;
     milestone.next = 1000;
     skillLevels = {};
@@ -2825,11 +2870,18 @@
       return;
     }
 
+    // Active play time excludes title, pause, shop and game-over time.
+    runElapsed += dt;
+    if (Coast && !coastApproachShown &&
+        runElapsed >= Coast.scene.startTime - 8) {
+      coastApproachShown = true;
+      popText(camX + PLAYER_X + 200, GROUND_Y - 245, '前方：夕阳海岸公路', '#ffe3ad', 27);
+    }
     // ---- zones, events, milestones
     enterZone(zoneAt());
     updateEvent(dt);
     updateMilestones();
-    if (zoneTransition.t > 0) zoneTransition.t = Math.max(0, zoneTransition.t - dt / 2.4);
+    if (zoneTransition.t > 0) zoneTransition.t = Math.max(0, zoneTransition.t - dt / (isCoast() ? 4.8 : 2.4));
     if (sale.t > 0) {
       sale.t = Math.max(0, sale.t - dt);
       if (sale.t === 0) sale.ids = [];
@@ -3472,6 +3524,11 @@
     }
 
     function onReady() {
+      if (Coast) Coast.mount({
+        zone:function(){return zoneIdx;}, coastIndex:function(){return coastIndex;},
+        world:function(){return {camX:camX,speed:speed,dist:dist,time:worldT,viewW:VIEW_W,event:eventDef};},
+        image:function(k){return IMG[k];}
+      });
       hud.emblem.src = assetURL('ui/emblem');
       hud.riceIcon.src = assetURL('item/rice');
       // Keep the run's special effect icon distinct from the base GPU chip.
@@ -3523,7 +3580,7 @@
     player: function () { return player; },
     world: function () {
       return { camX: camX, speed: speed, dist: dist, obstacles: obstacles, pickups: pickups,
-        powerups: powerups, platforms: platforms, gaps: trackGaps, zone:zoneIdx, time:worldT, transition:zoneTransition.t, tier:tier(), event:eventDef };
+        powerups: powerups, platforms: platforms, gaps: trackGaps, zone:zoneIdx, time:worldT, runElapsed:runElapsed, coastApproachShown:coastApproachShown, transition:zoneTransition.t, tier:tier(), event:eventDef };
     },
     box: playerBox,
     lastHit: function () { return game.lastHit; },
