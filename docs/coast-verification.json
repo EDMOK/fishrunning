@@ -1,0 +1,172 @@
+{
+  "entry": {
+    "zone": 5,
+    "elapsed": 360.49999999983646,
+    "dist": 274488.54080738715
+  },
+  "fastEntry": {
+    "zone": 5,
+    "elapsed": 360.4499999998365,
+    "dist": 513442.59406373015
+  },
+  "transitions": [
+    {
+      "zone": 0,
+      "elapsed": 0.5000000000000007,
+      "dist": 160.90481129627807
+    },
+    {
+      "zone": 1,
+      "elapsed": 50.499999999997776,
+      "dist": 27712.13653680017
+    },
+    {
+      "zone": 2,
+      "elapsed": 110.00000000003361,
+      "dist": 72986.0496877143
+    },
+    {
+      "zone": 3,
+      "elapsed": 180.00000000000063,
+      "dist": 130618.66643254757
+    },
+    {
+      "zone": 4,
+      "elapsed": 260.4999999999274,
+      "dist": 195262.26823575931
+    },
+    {
+      "zone": 5,
+      "elapsed": 360.49999999983646,
+      "dist": 274488.54080738715
+    }
+  ],
+  "stages": [
+    {
+      "tier": 0,
+      "elapsed": 0.5000000000000007
+    },
+    {
+      "tier": 1,
+      "elapsed": 25.499999999999194
+    },
+    {
+      "tier": 2,
+      "elapsed": 70.00000000000178
+    },
+    {
+      "tier": 3,
+      "elapsed": 140.000000000037
+    },
+    {
+      "tier": 4,
+      "elapsed": 230.4999999999547
+    }
+  ],
+  "pauseFrozen": true,
+  "shopFrozen": true,
+  "cityNew": [
+    "islands-zigzag",
+    "islands-stairs",
+    "islands-valley",
+    "broken-road",
+    "pit-and-island",
+    "pit-landing-hop",
+    "upper-staircase",
+    "platform-wave",
+    "upper-or-hop",
+    "obstacle-rhythm",
+    "slide-jump-shuffle",
+    "patrol-slalom",
+    "rice-fan",
+    "rice-switchback",
+    "rice-double-arc"
+  ],
+  "coastNew": [
+    "islands-zigzag",
+    "islands-stairs",
+    "islands-valley",
+    "broken-road",
+    "pit-and-island",
+    "pit-landing-hop",
+    "upper-staircase",
+    "platform-wave",
+    "patrol-slalom",
+    "rice-fan",
+    "rice-switchback",
+    "rice-double-arc"
+  ],
+  "phaseCounts": {
+    "city": {
+      "single": 6,
+      "rice-fan": 8,
+      "wave-trail": 8,
+      "rice": 7,
+      "platform-wave": 5,
+      "fork-trail": 3,
+      "broken-road": 7,
+      "rice-double-arc": 7,
+      "cloud-bridge": 5,
+      "islands-zigzag": 6,
+      "upper-staircase": 6,
+      "island-hop": 5,
+      "rice-switchback": 8,
+      "obstacle-rhythm": 2,
+      "moving-mine": 2,
+      "float": 2,
+      "pit-and-island": 6,
+      "upper-or-hop": 6,
+      "choice": 2,
+      "islands-valley": 5,
+      "tall": 3,
+      "pit-landing-hop": 3,
+      "patrol-slalom": 3,
+      "sweep-and-hop": 4,
+      "dash-lane": 1,
+      "slide-then-wall": 3,
+      "slide-jump-shuffle": 1,
+      "glide-trail": 4,
+      "pair": 1,
+      "stomp-chain": 1,
+      "islands-stairs": 2,
+      "slide-corridor": 1
+    },
+    "total": {
+      "single": 7,
+      "rice-fan": 10,
+      "wave-trail": 10,
+      "rice": 8,
+      "platform-wave": 6,
+      "fork-trail": 3,
+      "broken-road": 8,
+      "rice-double-arc": 8,
+      "cloud-bridge": 6,
+      "islands-zigzag": 7,
+      "upper-staircase": 7,
+      "island-hop": 6,
+      "rice-switchback": 10,
+      "obstacle-rhythm": 2,
+      "moving-mine": 2,
+      "float": 2,
+      "pit-and-island": 7,
+      "upper-or-hop": 6,
+      "choice": 2,
+      "islands-valley": 6,
+      "tall": 4,
+      "pit-landing-hop": 4,
+      "patrol-slalom": 4,
+      "sweep-and-hop": 5,
+      "dash-lane": 1,
+      "slide-then-wall": 6,
+      "slide-jump-shuffle": 1,
+      "glide-trail": 6,
+      "pair": 1,
+      "stomp-chain": 1,
+      "islands-stairs": 3,
+      "slide-corridor": 2
+    }
+  },
+  "errors": [],
+  "warnings": [],
+  "missing": []
+}

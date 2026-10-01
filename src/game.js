@@ -905,7 +905,7 @@
   // PNG path, painted ones become data URLs so the same `<img src>` works.
   var powerIconURL = {};
 
-  var ASSET_VERSION = '20261001-coast1';
+  var ASSET_VERSION = '20261001-route4';
 
   /**
    * The single place an asset URL is built. The preloader and every later
@@ -1356,7 +1356,8 @@
   // learned before the speed and the trickier patterns arrive.
   function tier() {
     var distanceTier=dist<2200?0:dist<5200?1:dist<9800?2:dist<17000?3:4;
-    return distanceTier;
+    var timeTier=runElapsed<25?0:runElapsed<70?1:runElapsed<140?2:runElapsed<230?3:4;
+    return Math.min(distanceTier,timeTier);
   }
 
   // ---- jump-arc budget -----------------------------------------------------
@@ -1605,6 +1606,15 @@
     } }
   ];
 
+  var RouteDirector = window.DSRoutePatterns.create({
+    rand:rand,randInt:randInt,pick:pick,
+    // Reserve enough reach for the strongest existing slowdown event.
+    scale:function(){return Math.sqrt(speedAt(dist)*.7/BASE_SPEED);},
+    addObstacle:addObstacle,addRice:addRice,addRiceArc:addRiceArc,addRiceLine:addRiceLine,
+    addPlatform:addPlatform,addTrackGap:addTrackGap,hint:hint
+  });
+  PATTERNS = PATTERNS.concat(RouteDirector.patterns);
+
   // ---- first-touch hints ----------------------------------------------------
   // A new verb nobody presses does not exist. Each beat that teaches one queues
   // a single line of text, shown once per run as the player approaches it.
@@ -1659,11 +1669,13 @@
     var horizon = camX + VIEW_W + 700;
     while (gen.x < horizon) {
       var t = tier();
-      var pool = PATTERNS.filter(function(p){return p.min<=t;});
-      var candidates=pool.filter(function(p){return recentPatterns.indexOf(p.id)<0;});
-      var p=!Object.keys(patternCounts).length ? PATTERNS[0] : pick(candidates.length?candidates:pool);
+      var pool = PATTERNS.filter(function(p){return p.min<=t && (runElapsed>=25||RouteDirector.family(p)!=='gap');});
+      var transition = Coast && runElapsed>=Coast.scene.startTime-8 && runElapsed<Coast.scene.startTime+8;
+      var p = !Object.keys(patternCounts).length ? PATTERNS[0] : RouteDirector.choose(pool,{
+        recent:recentPatterns,tier:t,coast:isCoast(),transition:transition
+      });
       recentPatterns.push(p.id);
-      if(recentPatterns.length>Math.min(3,pool.length-1))recentPatterns.shift();
+      if (recentPatterns.length > Math.min(5, pool.length - 1)) recentPatterns.shift();
 
       var o0 = obstacles.length, k0 = pickups.length;
       var platform0 = platforms.length, gap0 = trackGaps.length;
@@ -2526,6 +2538,7 @@
 
   function resetWorld() {
     obstacles.length = 0; pickups.length = 0; powerups.length = 0;
+    RouteDirector.reset();
     shots.length = 0; recentPatterns.length = 0; recentObstacleKinds.length = 0; pickupBag.length = 0;
     platforms.length = 0; trackGaps.length = 0;
     pickupArtIndex = 0;
