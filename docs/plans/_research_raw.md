@@ -85,8 +85,6 @@
 - 【事实·已证实】2025 年 Meta Superintelligence Labs 成立（Alexandr Wang 等），开源策略明显收缩。
 - 【梗·无法找到来源】"Llama 改名梗"我未能定位原始出处；可写的相邻事实是动物代号（Scout/Maverick/Behemoth）与"open-washing"吐槽。此梗建议**不要作为已核实内容使用**。
 
-## 特别任务
-**(a) Altman"原子弹/核爆"原话 → 结论：无法找到来源，疑似张冠李戴。** 我未能检索到任何权威原话把某时刻比作原子弹爆炸。**可核实的相邻事实**：Altman 2023-05-16 参议院听证引用 IAEA（国际原子能机构）模式主张国际监管，OpenAI《Governance of superintelligence》(2023-05) 同样提 IAEA。核类比更常见于 Mustafa Suleyman（"containment problem"《The Coming Wave》）与 Geoffrey Hinton。**建议：游戏里若要此梗，写成"IAEA 类比"（有据），不要署名"原子弹爆炸"原话。**
 
 **(b) Anthropic 对华限制时间线。** supported-countries 列表长期排除中国大陆/港澳（高置信，本次未打开）；**2025-09 收紧**为禁止"由中国等不支持地区实体多数持股/控制"的公司（含其海外子公司）使用，路透 2025-09-05 首发报道（高置信）。中文社区反应（知乎/V2EX/X）："封号玄学""薛定谔的账号""被迫迁国产模型"——**社区说法待证，我未能核实具体热帖**。
 
