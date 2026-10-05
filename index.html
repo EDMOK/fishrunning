@@ -21,7 +21,10 @@
      shadow, radius and animation lives in src/art-direction.css so there is
      exactly one place to change how the game looks. */
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%;overflow:hidden}
+  /* overscroll-behavior: a downward swipe on the left half is the slide gesture,
+     and on Android Chrome a swipe that reaches the top of the page pulls the
+     page down to refresh instead of driving the runner. */
+  html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none}
   body{
     font-family:var(--f-ui);
     /* The display face ships one weight; asking it for 800 would smear a fake
@@ -38,9 +41,16 @@
   button{font-family:inherit}
 
   /* ============================================================ cabinet ==== */
-  #fit{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  /* Landscape phones are wider than 16:9, and a notched one hides its left and
+     right edges behind the cutout. The safe-area padding keeps the cabinet
+     inside the usable rectangle; fitStage() measures this box, so the insets
+     never have to be duplicated in JS. */
+  #fit{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  }
   #stage{
-    position:relative;width:1280px;height:720px;
+    position:relative;width:1280px;height:calc(720px - var(--crop,0px));
     /* #fit is a flex row, and a 1280px item in a narrower one shrinks by default.
        Shrinking the layout box while the canvas keeps its own 1280px width put
        the right-hand third of the world outside `overflow:hidden`: the player
@@ -50,7 +60,15 @@
     transform-origin:center center;
     overflow:hidden;
   }
-  canvas{display:block;width:1280px;height:720px}
+  /* --crop is set by fitStage() on the stage element: on a wide viewport the
+     canvas is scaled to fill the width and this many canvas rows are trimmed
+     off the top (pure sky, see SKY_CROP_MAX). The stage box and every overlay
+     inside it shrink with the canvas, so the HUD stays glued to the visible
+     picture instead of drifting off the top edge. */
+  canvas{
+    display:block;position:absolute;left:0;top:calc(-1 * var(--crop,0px));
+    width:1280px;height:720px;
+  }
 
   /* ================================================================ HUD ==== */
   #hud{position:absolute;inset:0;z-index:2;pointer-events:none;font-weight:800}
@@ -123,6 +141,19 @@
      scale around 0.6, which is small but honest, and blocking it would be a
      false alarm. */
   @media (orientation:portrait) and (max-width:600px){ #rotate{display:flex} }
+
+  /* ========================================================= in-app tip ==== */
+  /* Sits above the cabinet and #pad (8) but below #rotate (20) and the shop
+     panel (30): a portrait blocker or a purchase board outranks a notice. */
+  #openTip{
+    position:fixed;left:50%;top:calc(8px + env(safe-area-inset-top,0px));
+    transform:translateX(-50%);z-index:12;
+    display:flex;align-items:center;gap:10px;max-width:calc(100vw - 20px);
+    padding:7px 8px 7px 14px;border-radius:16px;
+    font-size:12.5px;font-weight:700;line-height:1.4;
+  }
+  #openTip.hide{display:none}
+  #openTip button{flex:0 0 auto;padding:6px 12px;border:0;cursor:pointer;font:inherit;font-weight:800}
 
   /* ============================================================= helpers === */
   #stage.selecting canvas{transition:filter .25s}
@@ -264,6 +295,7 @@
             <button class="legbtn" id="btnHome"><img data-asset="ui/icon_home" alt="">回到标题</button>
           </div>
           <div class="overHint">按 空格 / Enter 立即重跑</div>
+          <div class="mobileHelp" style="margin-top:10px">点按屏幕立即重跑</div>
         </div>
       </div>
     </div>
@@ -280,6 +312,14 @@
   <div class="phone"></div>
   <b>请横屏游玩</b>
   <span>赛道是 16:9 的，竖屏只看得见中间一小条。<br>把手机横过来即可开始。</span>
+</div>
+
+<!-- Shown only inside WeChat/QQ's built-in browser, which refuses fullscreen and
+     can leave a shared link looking broken. game.js fills the wording in and
+     drops it again when a run starts, so it never sits over the HUD. -->
+<div id="openTip" class="hide">
+  <span id="openTipText"></span>
+  <button id="openTipClose" type="button">知道了</button>
 </div>
 
 <div id="pad" class="hide">

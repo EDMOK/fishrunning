@@ -646,7 +646,9 @@
   function toggleShop() {
     if (game.state === 'playing') {
       game.state = 'shop';
-      resetInput();
+      // A finger still resting on the stage must not become a tap into the
+      // resumed run: `inert` stops new events, this drops the one in flight.
+      clearInput();
       GameAudio.duckBgm(true);
       setSelecting(true);
       cx.shop.classList.remove('hide');
@@ -2285,19 +2287,48 @@
   // Fingers hold the jump open for the glide without ever touching `keys`; the
   // on-screen pad does the same, and `down` is the pad's slide/stomp hold.
   var touchJumpHeld = false, padJumpHeld = false, padDown = false;
-  var jumpFollowup = 0, slideBuffer = 0, gestureDownT = 0;
+  // A press can be shorter than the simulation step that would read it — a flick
+  // on the slide key is well under one 120Hz tick — so the request outlives the
+  // press instead of being dropped with it. All three are counted in simulation
+  // seconds and decay in update(), so they freeze with the world while a card is
+  // up instead of expiring behind the player's back. `slideBuffer` is a press
+  // edge (the pad button and the ↓ key); `gestureDownT` is the swipe's hold,
+  // which has no button left to report a release; `jumpFollowup` is the second
+  // of two taps that landed inside the same simulation step.
+  var slideBuffer = 0, gestureDownT = 0, jumpFollowup = 0;
 
+  function slidePressed() {
+    if (game.state !== 'playing') return;
+    // A fresh press renews the minimum duration even during an existing slide.
+    if (player.sliding) player.slideT = 0;
+    slideBuffer = JUMP_BUFFER;
+  }
+
+  /** Drop one-shot requests: a new run, a pause or a modal must not inherit one. */
+  function clearInputRequests() {
+    slideBuffer = 0;
+    gestureDownT = 0;
+    jumpFollowup = 0;
+  }
+
+  /** Forget the finger in flight, whatever it was about to do. */
   function endTouch() {
     touchStart = null;
     touchJumpHeld = false;
   }
 
-  function resetInput() {
+  /**
+   * Everything an interruption must drop: keys, pad holds, the finger in flight
+   * and any one-shot request it left behind. A modal or a new run must not
+   * inherit input the player aimed at the previous state — a finger still down
+   * when the shop closes would otherwise fire its tap into the resumed run.
+   */
+  function clearInput() {
     keys = {};
     endTouch();
     releasePad();
     player.buffer = 0;
-    jumpFollowup = slideBuffer = gestureDownT = 0;
+    clearInputRequests();
   }
 
   function jumpPressed() {
@@ -2307,25 +2338,13 @@
     // jump queued and fire it the instant the card picker closes, which reads as
     // the game jumping on its own.
     if (game.state === 'playing') {
-      // Two taps can arrive between simulation frames. Preserve the second
-      // edge for the next simulation step instead of overwriting the first jump.
+      // Two taps can arrive between simulation frames — a phone that hitches
+      // makes that ordinary, and the second one is the double jump. Hold it in a
+      // second slot so it fires on the following step instead of overwriting the
+      // first and quietly dropping the double jump.
       if (player.buffer > 0) jumpFollowup = JUMP_BUFFER;
       else player.buffer = JUMP_BUFFER;
     }
-  }
-
-  function slidePressed() {
-    if (game.state === 'playing') slideBuffer = JUMP_BUFFER;
-  }
-
-  function beginSlide() {
-    // A fresh tap renews the minimum duration even during an existing slide.
-    if (slideBuffer > 0) player.slideT = 0;
-    slideBuffer = 0;
-    if (player.sliding) return;
-    player.sliding = true; player.slideT = 0;
-    GameAudio.sfx('slide');
-    burst(camX + PLAYER_X - 20, player.y, { n: 8, col: ['#bff4ff', '#8fd8ff'], sp0: 40, sp1: 170, dir: Math.PI, spread: 0.8, r0: 2, r1: 6, g: 300, l0: .2, l1: .5 });
   }
 
   function onKeyDown(e) {
@@ -2380,7 +2399,6 @@
    * lift trims the jump exactly like a key does.
    */
   function cutJump() {
-    if (jumpHeld()) return;
     if (player.cuttable && player.vy < 0) {
       player.vy *= 0.85;
       player.cuttable = false;
@@ -2389,9 +2407,8 @@
 
   function onKeyUp(e) {
     var k = e.code;
-    var wasHeld = keys[k];
+    if (keys[k] && JUMP_KEYS.indexOf(k) >= 0) cutJump();
     keys[k] = false;
-    if (wasHeld && JUMP_KEYS.indexOf(k) >= 0) cutJump();
   }
 
   function downHeld() { return padDown || gestureDownT > 0 || !!(keys['ArrowDown'] || keys['KeyS']); }
@@ -2399,21 +2416,24 @@
   function bindInput() {
     window.addEventListener('keydown', onKeyDown, { passive: false });
     window.addEventListener('keyup', onKeyUp);
-    window.addEventListener('blur', function () {
-      resetInput();
+    function interrupt() {
+      clearInput();
       if (game.state === 'playing') setPause(true);
-    });
-
+    }
+    // Both are watched: a phone that switches apps or locks its screen does not
+    // reliably fire `blur` (iOS in particular), and a run left going behind a
+    // hidden tab is a run that ends without the player seeing why.
+    window.addEventListener('blur', interrupt);
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden) return;
-      resetInput();
-      if (game.state === 'playing') setPause(true);
+      if (document.hidden) interrupt();
     });
 
     var stage = document.getElementById('stage');
 
     stage.addEventListener('pointerdown', function (e) {
       if (e.target.closest && e.target.closest('button')) return;
+      // A mouse's secondary buttons are not game input: right-click belongs to
+      // the context menu, middle-click to autoscroll.
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       // Extra fingers are ignored rather than allowed to steal the gesture state
       // from the one already tracking a swipe.
@@ -2422,53 +2442,66 @@
       var rightSide = e.clientX >= window.innerWidth * 0.5;
       touchStart = {
         id: e.pointerId, x: e.clientX, y: e.clientY,
-        rightSide: rightSide, slid: false, jumped: false
+        rightSide: rightSide, slid: false
       };
-      try { stage.setPointerCapture(e.pointerId); } catch (err) { /* synthetic or unsupported pointer */ }
+      // A finger that wanders off the stage (into the letterbox beside it) must
+      // keep reporting its moves, and capture is what guarantees that. It is
+      // never a prerequisite for accepting the press, though: a synthetic event
+      // or a browser that refuses capture must not swallow the jump.
+      try { stage.setPointerCapture(e.pointerId); } catch (err) { /* press still counts */ }
       // Right-side touch starts immediately, matching the physical jump button
       // and making short taps responsive enough for a fast runner.
       if (rightSide) {
-        touchStart.jumped = true;
         touchJumpHeld = true;
         jumpPressed();
       }
     });
     // `slid` means "a gesture has already consumed this touch", whichever
     // direction it went: both swipes must suppress the tap-to-jump, or every
-    // swipe would also queue a jump. A swipe ends the jump hold so it cannot glide.
+    // swipe would also queue a jump. The delays also end the tap's hold, so a
+    // swipe can never glide.
     stage.addEventListener('pointermove', function (e) {
       if (!touchStart || e.pointerId !== touchStart.id || touchStart.slid) return;
+      // Gestures only mean something in a run. Without this a downward drag on a
+      // card would bank a slide that fires the moment play resumes.
+      if (game.state !== 'playing') return;
       if (!touchStart.rightSide && e.clientY - touchStart.y > SWIPE_DOWN) {
         touchStart.slid = true;
-        touchJumpHeld = false;
-        slidePressed();
-        // Keep gestures independent of keyboard holds and use simulation time.
+        endTouch();
+        // Held in simulation seconds: the finger is gone, and writing into the
+        // keyboard's table would both expire in real time (behind a pause card)
+        // and clobber a ↓ the player is still physically holding.
         gestureDownT = 0.52;
       } else if (!touchStart.rightSide && e.clientX - touchStart.x > SWIPE_RIGHT) {
         touchStart.slid = true;
-        touchJumpHeld = false;
+        endTouch();
         tryDash();
       }
     });
+    // Release is watched on the window, not the stage: a finger can lift in the
+    // letterbox beside the picture, and a gesture that never ends would lock out
+    // every later touch (`if (touchStart) return` above).
     window.addEventListener('pointerup', function (e) {
       if (!touchStart || e.pointerId !== touchStart.id) return;
       var wasSlide = touchStart.slid;
-      var jumped = touchStart.jumped;
+      var rightSide = touchStart.rightSide;
       endTouch();
-      if (jumped) { if (game.state === 'playing') cutJump(); return; }
+      // The one-shot requests belong to the previous state: a pointercancel (or
+      // a pause card opening mid-gesture) can end a touch with them still set,
+      // and they would otherwise fire into the run that comes next.
+      clearInputRequests();
       if (game.state === 'title') { startRun(); return; }
       if (game.state === 'over') { if (game.overFade > 0.5) restart(); return; }
       if (game.state !== 'playing' || wasSlide) return;
+      // Right-side input already jumped on press; release trims the first arc.
       // Left-side taps remain a compatible jump-on-release fallback.
-      jumpPressed();
+      if (rightSide) cutJump();
+      else jumpPressed();
     });
-    function cancelTouch(e) {
-      if (!touchStart || e.pointerId !== touchStart.id) return;
+    window.addEventListener('pointercancel', function (e) {
+      if (touchStart && e.pointerId !== touchStart.id) return;
       endTouch();
-      gestureDownT = 0;
-    }
-    window.addEventListener('pointercancel', cancelTouch);
-    stage.addEventListener('lostpointercapture', cancelTouch);
+    });
   }
 
   // -------------------------------------------------------------- touch pad
@@ -2479,28 +2512,31 @@
   // sees them (and the pads are hidden outside a run, see syncPad).
   var padBtns = [];
 
-  /** Track each button's own finger; release outside the button also counts. */
+  /** Press-and-hold wiring: pointerdown/up/cancel/leave, with a held class. */
   function wireHold(el, fn) {
     if (!el) return;
     padBtns.push(el);
+    /** One release path, whether the finger lifted, was cancelled, or was lost. */
+    function release(e) {
+      if (el._padPointer !== e.pointerId) return;
+      el._padPointer = null;
+      if (!el.classList.contains('held')) return;
+      el.classList.remove('held');
+      fn(false);
+    }
     el.addEventListener('pointerdown', function (e) {
       e.preventDefault();
-      if (game.state !== 'playing' || (e.pointerType === 'mouse' && e.button !== 0) || el._padPointer != null) return;
+      if (e.button !== 0 || el._padPointer != null) return;
       el._padPointer = e.pointerId;
       el.classList.add('held');
       fn(true);
-      // Capture must never be a prerequisite for accepting the press.
-      try { el.setPointerCapture(e.pointerId); } catch (err) { /* window release fallback */ }
+      // Capture must never be a prerequisite for accepting the press: a browser
+      // that refuses it (or a synthetic event) still gets a working button, and
+      // the window-level releases below cover the finger that slides off.
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* see above */ }
     });
-    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) {
-      (t === 'lostpointercapture' ? el : window).addEventListener(t, function (e) {
-        if (el._padPointer !== e.pointerId) return;
-        el._padPointer = null;
-        if (!el.classList.contains('held')) return;
-        el.classList.remove('held');
-        fn(false);
-      });
-    });
+    ['pointerup', 'pointercancel'].forEach(function (t) { window.addEventListener(t, release); });
+    el.addEventListener('lostpointercapture', release);
   }
 
   /** Let go of everything the pad is holding — the pad's version of keyup. */
@@ -2538,6 +2574,8 @@
     wireHold(document.getElementById('padSlide'), function (on) {
       GameAudio.unlock();
       padDown = on;
+      // The press edge is buffered so a flick shorter than one simulation step
+      // still becomes a slide instead of vanishing between two frames.
       if (on) slidePressed();
     });
     if (hud.padDash) {
@@ -2548,6 +2586,36 @@
         GameAudio.unlock();
         tryDash();
       });
+    }
+  }
+
+  // --------------------------------------------------------- screen wake lock
+  // A run can last minutes and a phone left alone dims and locks, which on a
+  // touch device means the player's thumbs are mid-swipe when the screen goes
+  // dark. Only some browsers have the API (Chrome/Edge/Samsung, Safari 16.4+),
+  // and the browser drops the lock by itself whenever the page hides — which is
+  // the same moment the run pauses — so this just asks again when play resumes.
+  var wakeLock = null, wakeWanted = false;
+
+  function syncWakeLock(on) {
+    if (on === wakeWanted) return;
+    wakeWanted = on;
+    if (!navigator.wakeLock || !navigator.wakeLock.request) return;
+    if (on) {
+      var p;
+      try { p = navigator.wakeLock.request('screen'); }
+      catch (err) { return; }   // a refusing implementation must not break the frame
+      if (p && p.then) {
+        p.then(function (lock) {
+          // The run may have ended while the request was in flight; a lock held
+          // for a paused game would keep the screen on with nothing happening.
+          if (!wakeWanted) { if (lock.release) lock.release(); return; }
+          wakeLock = lock;
+        }).catch(function () { /* unsupported context or denied: the run is fine */ });
+      }
+    } else if (wakeLock) {
+      try { wakeLock.release(); } catch (err) { /* already gone */ }
+      wakeLock = null;
     }
   }
 
@@ -2705,7 +2773,9 @@
   }
 
   function resetWorld() {
-    resetInput();
+    // A new run must not inherit input aimed at the last one — including a
+    // finger that is still down and would otherwise release into this run.
+    clearInput();
     obstacles.length = 0; pickups.length = 0; powerups.length = 0;
     RouteDirector.reset();
     Experience.reset(styleRecord());
@@ -2756,6 +2826,7 @@
   }
 
   function startRun() {
+    hideOpenTip();
     resetWorld();
     cx.shop.classList.add('hide');
     setSelecting(false);
@@ -2775,7 +2846,9 @@
   function setPause(on) {
     if (on && game.state === 'playing') {
       game.state = 'paused';
-      resetInput();
+      // A pooled jump or slide must not fire the moment the world resumes, and a
+      // finger held down under the pause card must not become a tap into it.
+      clearInput();
       GameAudio.duckBgm(true);
       setSelecting(true);
       showPauseCard(true);
@@ -2803,12 +2876,19 @@
         '</div>' +
         '<div id="goTitle" class="pauseTitle" style="margin-top:14px">已暂停</div>' +
         '<div class="sub" style="margin-top:6px">鲸鱼娘正在补充白饭…</div>' +
+        // Two lists, one shown: the keyboard one is meaningless on a phone, and
+        // the touch one is meaningless with a keyboard. The media query that
+        // picks between them is the same one the title card uses.
         '<div class="keybar" style="margin-top:18px">' +
         '<span class="kb"><b>Shift</b>冲刺</span>' +
         '<span class="kb"><b>↓</b>空中下砸</span>' +
         '<span class="kb"><b>长按空格</b>滑翔</span>' +
         '<span class="kb"><b>P</b>继续</span>' +
         '<span class="kb"><b>M</b>静音</span>' +
+        '</div>' +
+        '<div class="mobileHelp" style="margin-top:14px">' +
+        '右侧<b>跳跃</b>键点按起跳、按住滑翔<br>' +
+        '左侧<b>滑铲</b>键按住下砸、<b>冲刺</b>键点按冲刺' +
         '</div>' +
         '<div class="row">' +
         '<button class="legbtn primary" id="btnResume">' +
@@ -3129,15 +3209,15 @@
     // ---- player horizontal is fixed; only vertical simulation
     player.runT += dt;
 
-    // Accept press edges even when a tap was released between frames.
-    if (player.buffer <= 0 && jumpFollowup > 0) {
-      player.buffer = jumpFollowup;
-      jumpFollowup = 0;
-    }
-    jumpFollowup = Math.max(0, jumpFollowup - dt);
+    // A press edge is a request, not a hold: it has a short life of its own so a
+    // tap between two simulation steps is not lost (see slidePressed). The jump
+    // followup only moves into the real buffer once the first jump has consumed
+    // it, which is what turns the pair into a normal jump + double jump.
+    if (player.buffer <= 0 && jumpFollowup > 0) { player.buffer = jumpFollowup; jumpFollowup = 0; }
+    if (slideBuffer > 0) slideBuffer -= dt;
+    if (gestureDownT > 0) gestureDownT -= dt;
+    if (jumpFollowup > 0) jumpFollowup -= dt;
     var downRequested = downHeld() || slideBuffer > 0;
-    slideBuffer = Math.max(0, slideBuffer - dt);
-    gestureDownT = Math.max(0, gestureDownT - dt);
 
     // jump buffering / coyote
     if (player.buffer > 0) player.buffer -= dt;
@@ -3154,7 +3234,11 @@
     // covers more than a slide does, so keeping the slide box would only shrink
     // the hitbox without changing anything the player can see.
     var wantSlide = downRequested && player.onGround && player.dashT === 0;
-    if (wantSlide) beginSlide();
+    if (wantSlide && !player.sliding) {
+      player.sliding = true; player.slideT = 0;
+      GameAudio.sfx('slide');
+      burst(camX + PLAYER_X - 20, player.y, { n: 8, col: ['#bff4ff', '#8fd8ff'], sp0: 40, sp1: 170, dir: Math.PI, spread: 0.8, r0: 2, r1: 6, g: 300, l0: .2, l1: .5 });
+    }
     if (player.sliding) {
       player.slideT += dt;
       if (!downHeld() && player.slideT > SLIDE_MIN) player.sliding = false;
@@ -3235,8 +3319,6 @@
         player.y = landedAt; player.groundY = landedAt;
         player.vy = 0;
         player.onGround = true;
-        // Apply a landing-time slide before the collision pass, not one frame later.
-        if (downRequested && player.dashT === 0) beginSlide();
         player.jumps = 0;
         player.landingT=.18;
         player.gravMul = 1;
@@ -3661,11 +3743,77 @@
     if (!m) GameAudio.sfx('ui');
   }
 
+  // ------------------------------------------------------- in-app browsers
+  /**
+   * The one-line notice for WeChat/QQ's built-in browsers. It exists because a
+   * shared link opened there can be unplayable for reasons that are invisible to
+   * the player (fullscreen refused, landscape lock unavailable, audio locked),
+   * and "the game is broken" is the wrong conclusion to leave them with.
+   *
+   * Only shown on a coarse pointer: a desktop browser has none of these
+   * problems, and a notice is worse than the issue it describes if it is not
+   * needed. Touching 开始 hides it, so it never sits over the HUD.
+   */
+  function hideOpenTip() {
+    var el = document.getElementById('openTip');
+    if (el) el.classList.add('hide');
+  }
+
+  function showOpenTip(platform) {
+    if (!platform || !mobileRender) return;
+    var el = document.getElementById('openTip');
+    var text = document.getElementById('openTipText');
+    if (!el || !text) return;
+    text.textContent = platform === 'wechat'
+      ? '微信内可能无法全屏或正常游玩：点右上角 ⋯ 选「在浏览器打开」'
+      : 'QQ 内可能无法全屏或正常游玩：点右上角 ⋯ 选「在浏览器中打开」';
+    el.classList.remove('hide');
+    var close = document.getElementById('openTipClose');
+    if (close) close.addEventListener('click', hideOpenTip);
+  }
+
   // -------------------------------------------------------------------- boot
+  // A phone held sideways is wider than the stage's 16:9, so fitting by height
+  // leaves dark bars beside a picture that is already small. On touch devices,
+  // fill the width instead and pay for it out of the sky: canvas rows
+  // [0, WORLD_OY) sit above the world's own top edge — the world layer starts
+  // exactly at WORLD_OY — so nothing with a position in the level can be
+  // trimmed, and the runner at the top of a jump stays well inside it.
+  //   The trim also drags the HUD down with it. The cabinet shortens, the HUD is
+  //   anchored to it, so in canvas units every panel moves down by exactly the
+  //   crop: the zone plaque's bottom goes from 143 to 143 + crop. Measured at
+  //   844x390 (hero sprites carry no transparent padding, the alpha box starts
+  //   at row 0): a maximum double jump from the ground puts the sprite's top at
+  //   canvas y 225, so 72 leaves it ~10px clear of the plaque, and 80 would
+  //   graze it. A spring launch plus a double jump reaches y 168 and does pass
+  //   behind the plaque — a self-inflicted arc where nothing needs reading, and
+  //   the only way to keep that clear would be a crop of 25, i.e. no framing
+  //   fix at all. The title card (590 tall, .card keeps a 28px overlay margin)
+  //   is the other bound and fits everywhere.
+  var SKY_CROP_MAX = 72;
+
   function fitStage() {
     var stage = document.getElementById('stage');
-    var pad = 12;
-    var k = Math.min((window.innerWidth - pad) / VW, (window.innerHeight - pad) / VH);
+    // Measure the flex box, not the window: this is the box that already
+    // excludes the safe-area insets on a notched phone.
+    var fit = document.getElementById('fit');
+    var cs = getComputedStyle(fit);
+    var availW = fit.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    var availH = fit.clientHeight;
+    // Desktop keeps its 12px breathing room; a phone wants the pixels.
+    var pad = mobileRender ? 0 : 12;
+    availW -= pad;
+    availH -= pad;
+    var k = Math.min(availW / VW, availH / VH);
+    var crop = 0;
+    if (mobileRender && availW / availH > VW / VH) {
+      crop = Math.round(Math.max(0, Math.min(SKY_CROP_MAX, VH - availH / (availW / VW))));
+      // With the trim applied the stage box is VH - crop tall, so this scale
+      // fills the width exactly when the crop was not capped, and leaves only
+      // slivers when it was.
+      k = availH / (VH - crop);
+    }
+    stage.style.setProperty('--crop', crop + 'px');
     stage.style.transform = 'scale(' + k + ')';
     resizeCanvas(k);
     // The rotate card covers the whole cabinet on a portrait phone, and a run
@@ -3714,6 +3862,9 @@
       acc -= STEP;
     }
     syncPad();
+    // Both are DOM/platform syncs that only matter on a rendered frame; update()
+    // early-returns in every menu state, so they cannot live there.
+    syncWakeLock(game.state === 'playing');
     render();
   }
 
@@ -3729,7 +3880,7 @@
     var on = game.state === 'playing';
     if (lastHud.padOn !== on) {
       hud.pad.classList.toggle('hide', !on);
-      if (!on) resetInput();
+      if (!on) releasePad();
       lastHud.padOn = on;
     }
     if (hud.padDash && lastHud.padCharges !== player.charges) {
@@ -3785,6 +3936,13 @@
     var isIOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
     if (isIOS && !canFs) document.body.classList.add('ios');
 
+    // WeChat and QQ open a shared link in their own webview, where fullscreen is
+    // refused, the page cannot claim landscape and some audio paths stay locked,
+    // so a link that works everywhere else can look plain broken there. Say so —
+    // the player otherwise just concludes the game does not run.
+    var inApp = /MicroMessenger/i.test(ua) ? 'wechat' : (/QQ\/\d/i.test(ua) ? 'qq' : '');
+    showOpenTip(inApp);
+
     // Entering or leaving fullscreen changes the viewport, and the browser does
     // not always fire `resize` for it on the way back out.
     ['fullscreenchange', 'webkitfullscreenchange'].forEach(function (t) {
@@ -3799,9 +3957,15 @@
         '<div style="max-width:640px;text-align:center;line-height:1.7">' +
         '<div style="font-size:22px;color:#c66d7e;margin-bottom:10px">素材加载失败</div>' +
         '<div style="font-size:15px;color:#607c96">' + (err && err.message ? err.message : '') + '</div>' +
-        '<div style="font-size:14px;color:#71869a;margin-top:14px">如果是用 file:// 直接打开的，' +
-        '请改用本地服务器：<br><code style="color:#4d91c3">python -m http.server 8000</code> ' +
-        '然后访问 <code style="color:#4d91c3">http://localhost:8000</code></div>' +
+        // Inside WeChat/QQ the local-server advice is meaningless: the reader
+        // cannot run one, and the webview may be why fetching failed at all.
+        (inApp
+          ? '<div style="font-size:14px;color:#bd7652;margin-top:14px">当前在' +
+            (inApp === 'wechat' ? '微信' : 'QQ') + '内置浏览器中打开。若一直加载失败，' +
+            '请点右上角 ⋯ 选择「在浏览器打开」；没有该选项时先复制链接，再到浏览器里打开。</div>'
+          : '<div style="font-size:14px;color:#71869a;margin-top:14px">如果是用 file:// 直接打开的，' +
+            '请改用本地服务器：<br><code style="color:#4d91c3">python -m http.server 8000</code> ' +
+            '然后访问 <code style="color:#4d91c3">http://localhost:8000</code></div>') +
         '</div>';
     }
 

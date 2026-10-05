@@ -9,6 +9,10 @@
       "passed": true
     },
     {
+      "name": "an early repeat tap restarts the slide minimum",
+      "passed": true
+    },
+    {
       "name": "slide is active in the landing frame",
       "passed": true
     },
@@ -57,11 +61,39 @@
       "passed": true
     },
     {
+      "name": "finger held across the shop does not jump on release",
+      "passed": true
+    },
+    {
+      "name": "finger held across a pause does not jump on release",
+      "passed": true
+    },
+    {
+      "name": "swipe on a card does not bank a slide",
+      "passed": true
+    },
+    {
       "name": "shop discards queued input",
       "passed": true
     },
     {
+      "name": "screen wake lock follows the run",
+      "passed": true
+    },
+    {
       "name": "blur pauses and clears fingers",
+      "passed": true
+    },
+    {
+      "name": "cards drop keyboard wording on touch",
+      "passed": true
+    },
+    {
+      "name": "tap on the game-over card restarts",
+      "passed": true
+    },
+    {
+      "name": "hiding the tab pauses and clears fingers",
       "passed": true
     },
     {
@@ -74,6 +106,50 @@
     },
     {
       "name": "restart discards both pending jumps",
+      "passed": true
+    },
+    {
+      "name": "quick slide tap registers @568x320",
+      "passed": true
+    },
+    {
+      "name": "quick slide tap registers @844x390",
+      "passed": true
+    },
+    {
+      "name": "quick slide tap registers @844x475",
+      "passed": true
+    },
+    {
+      "name": "framing @568x320",
+      "passed": true
+    },
+    {
+      "name": "framing @844x390",
+      "passed": true
+    },
+    {
+      "name": "framing @844x475",
+      "passed": true
+    },
+    {
+      "name": "framing @926x428",
+      "passed": true
+    },
+    {
+      "name": "framing @1280x720",
+      "passed": true
+    },
+    {
+      "name": "in-app notice in a normal browser",
+      "passed": true
+    },
+    {
+      "name": "in-app notice in WeChat",
+      "passed": true
+    },
+    {
+      "name": "in-app notice in QQ",
       "passed": true
     }
   ],
@@ -173,6 +249,58 @@
           "hit": true
         }
       ]
+    }
+  ],
+  "framing": [
+    {
+      "viewport": {
+        "width": 568,
+        "height": 320
+      },
+      "crop": 0,
+      "fillX": 1,
+      "fillY": 0.998,
+      "stageH": 720
+    },
+    {
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "crop": 72,
+      "fillX": 0.913,
+      "fillY": 1,
+      "stageH": 648
+    },
+    {
+      "viewport": {
+        "width": 844,
+        "height": 475
+      },
+      "crop": 0,
+      "fillX": 1,
+      "fillY": 0.999,
+      "stageH": 720
+    },
+    {
+      "viewport": {
+        "width": 926,
+        "height": 428
+      },
+      "crop": 72,
+      "fillX": 0.913,
+      "fillY": 1,
+      "stageH": 648
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "crop": 0,
+      "fillX": 1,
+      "fillY": 1,
+      "stageH": 720
     }
   ],
   "errors": [],

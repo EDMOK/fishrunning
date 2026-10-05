@@ -660,6 +660,17 @@ body{color:var(--ink)}
 #rotate span{font-size:13px;font-weight:600;line-height:1.7;color:var(--ink-2);max-width:320px}
 .iosHint{color:var(--gold);font-weight:700;font-size:12.5px;letter-spacing:.02em}
 
+/* ========================================================== in-app tip ==== */
+#openTip{
+  color:#2f5f86;background:rgba(255,252,240,.97);
+  border:1px solid #f0dfb8;box-shadow:0 6px 18px rgba(57,104,143,.18);
+}
+#openTip button{
+  border-radius:var(--r-s);color:#fff;background:var(--blue);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 0 #2261aa;
+}
+#openTip button:active{transform:translateY(1px);box-shadow:inset 0 1px 3px rgba(20,67,122,.2)}
+
 /* ============================================================= helpers === */
 #stage.selecting canvas{filter:saturate(.9) brightness(.97);transition:filter .25s}
 
@@ -672,7 +683,12 @@ body{color:var(--ink)}
   #btns #btnShop{min-width:140px;height:64px}
   #btns #btnPause{min-width:64px;height:64px}
   #btns #btnSound,#btns #btnFull{display:none}
-  #cardTitle .keybar{display:none}
+  /* Keyboard-only wording is noise on a phone, so each card drops it and shows
+     the touch wording instead (.mobileHelp): the title card's key list, the
+     pause card's key list (built by showPauseCard with the same class), and the
+     game-over card's "press Space" line. */
+  #cardTitle .keybar,#cardPause .keybar{display:none}
+  #cardOver .overHint{display:none}
   .mobileHelp{display:block}
   #shopDismiss{width:64px;height:64px}
   #btnShopClose{min-height:68px}
