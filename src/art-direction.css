@@ -339,6 +339,7 @@ body{color:var(--ink)}
 }
 #cardTitle .zoneStrip em{font-style:normal;color:var(--ink-3);font-size:11px}
 #cardTitle .startRow{justify-content:flex-start;gap:10px;margin:0}
+#cardTitle .socialRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 #cardTitle #btnStart{min-width:230px}
 #cardTitle #btnFullCard{min-height:44px;padding:0 16px;font-size:13px}
 /* An <a>, not a <button>: the rest of the row drives game actions, this one
@@ -351,6 +352,10 @@ body{color:var(--ink)}
    currentColor, so the glyph follows this colour for free. */
 #cardTitle #btnBili{text-decoration:none;color:var(--pink);border-color:var(--pink)}
 #cardTitle #btnBili:hover{background:var(--pink-soft);border-color:var(--pink)}
+#cardTitle .socialLink{min-width:0;padding:0 13px;font-size:12px;gap:7px}
+#cardTitle .socialLink img{width:20px;height:20px;object-fit:contain}
+#cardTitle #btnQQ{color:var(--pink);border-color:var(--pink)}
+#cardTitle #btnQQ:hover{background:var(--pink-soft);border-color:var(--pink)}
 #cardTitle .start{margin:10px 0 14px;font-size:11px;font-weight:600;letter-spacing:.02em;text-align:left;color:var(--ink-3)}
 /* Three explicit rows keep the key list inside the card's fixed height. */
 #cardTitle .keybar{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin:0;justify-content:start}
@@ -676,7 +681,26 @@ body{color:var(--ink)}
 
 :focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:var(--r-s)}
 
-@media (hover:none) and (pointer:coarse){
+@media (max-width:900px), (hover:none) and (pointer:coarse){
+  #cardTitle{width:1120px;max-width:calc(100% - 32px);height:auto;min-height:0;display:block;overflow:auto}
+  #cardTitle .titleArt{display:none}
+  #cardTitle .titleContent{width:100%;padding:48px 64px 42px}
+  #cardTitle .titleEyebrow{justify-content:flex-start;font-size:14px;letter-spacing:.18em}
+  #cardTitle .titleEyebrow #emblem{width:44px;height:44px}
+  #cardTitle .titleWrap{margin:18px 0 16px}
+  #cardTitle h1{font-size:78px}
+  #cardTitle .sub{max-width:760px;font-size:20px;line-height:1.6}
+  #cardTitle .zoneStrip{gap:10px;margin:20px 0 24px}
+  #cardTitle .zchip{padding:7px 16px;font-size:14px}
+  #cardTitle .startRow{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;width:100%}
+  #cardTitle .startRow #btnStart{width:100%;min-width:0;min-height:88px;font-size:26px}
+  #cardTitle .startRow #btnStart img{width:34px;height:34px}
+  #cardTitle .socialRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:100%}
+  #cardTitle .socialRow .socialLink{width:100%;min-width:0;min-height:82px;padding:0 8px;font-size:18px;gap:8px;touch-action:manipulation}
+  #cardTitle .socialRow .socialLink img{width:36px;height:36px}
+  #cardTitle .startRow #btnFullCard{width:100%;min-width:0;min-height:72px;font-size:18px}
+  #cardTitle .keybar{display:none}
+  #cardTitle .mobileHelp{display:block}
   #riceWrap{height:78px}
   #btns{height:78px}
   #btnShop kbd{display:none}
@@ -707,6 +731,12 @@ body{color:var(--ink)}
   #btnShopClose{min-width:180px}
 }
 @media (max-height:520px){
+  #cardTitle .titleContent{padding:28px 38px 24px}
+  #cardTitle h1{font-size:48px}
+  #cardTitle .sub{font-size:13px;line-height:1.45}
+  #cardTitle .zoneStrip{margin-top:10px;margin-bottom:12px}
+  #cardTitle .start{margin-bottom:10px}
+  #cardTitle .socialLink{min-height:56px}
   #shopPanel{padding:8px}
   .shopWindow{max-height:calc(100dvh - 16px)}
   .shopHeader,.shopFooter{padding:8px 16px}

@@ -3906,12 +3906,26 @@
     document.getElementById('btnSound').addEventListener('click', function () { toggleMute(); });
     document.getElementById('btnAgain').addEventListener('click', function () { GameAudio.sfx('ui'); restart(); });
     document.getElementById('btnHome').addEventListener('click', function () { GameAudio.sfx('ui'); showTitle(); });
-    // The only title-card control that leaves the page. A link keeps focus after
-    // the click, and Enter is a documented way to start a run, so without the
-    // blur the next Enter would open the video again on top of starting the game
-    // (Space is already safe: onKeyDown preventDefaults every JUMP_KEY).
+    // Links on the title card can keep focus after a click, and Enter is a
+    // documented way to start a run. Blur them so the next Enter starts the game
+    // instead of activating the external link again.
     document.getElementById('btnBili').addEventListener('click', function () {
       GameAudio.sfx('ui'); this.blur();
+    });
+    document.getElementById('btnQQ').addEventListener('click', function () {
+      var button = this;
+      var groupNumber = '1041665197';
+      GameAudio.sfx('ui');
+      function showCopied(ok) {
+        button.lastChild.nodeValue = ok ? '已复制群号' : '群号：' + groupNumber;
+        window.setTimeout(function () { button.lastChild.nodeValue = 'QQ群'; }, 1800);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(groupNumber).then(function () { showCopied(true); }, function () { showCopied(false); });
+      } else {
+        showCopied(false);
+      }
+      button.blur();
     });
 
     // Fullscreen exists on desktop browsers and Android; iOS Safari has no API

@@ -1,9 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-labelledby="title desc">
   <title id="title">QQ 群</title>
   <desc id="desc">QQ group mark</desc>
-  <path fill="#eaf5ff" stroke="#172b4d" stroke-width="1.5" d="M7.4 15.4c-.8 1.42-1.16 2.57-.86 2.97.26.35.88.2 1.63-.25A4.7 4.7 0 0 0 12 20a4.7 4.7 0 0 0 3.83-1.88c.75.45 1.37.6 1.63.25.3-.4-.06-1.55-.86-2.97.2-.6.3-1.25.3-1.92 0-3.17-2.2-5.74-4.9-5.74S7.1 10.31 7.1 13.48c0 .67.1 1.32.3 1.92Z"/>
-  <circle cx="10.2" cy="13.25" r=".65" fill="#172b4d"/>
-  <circle cx="13.8" cy="13.25" r=".65" fill="#172b4d"/>
-  <path fill="none" stroke="#ff6f91" stroke-linecap="round" stroke-width="1.4" d="M10.25 15.35c1.05.8 2.45.8 3.5 0"/>
-  <path fill="#ff6f91" d="M7.05 12.85c-.77-.16-1.4-.03-1.62.34-.25.42.12 1.1.9 1.7l1.05-.54-.33-1.5ZM16.95 12.85c.77-.16 1.4-.03 1.62.34.25.42-.12 1.1-.9 1.7l-1.05-.54.33-1.5Z"/>
+  <circle cx="12" cy="8" r="3.2" fill="#2f80ed"/>
+  <path fill="#2f80ed" d="M6.8 19.5c.2-3.3 2.2-5.4 5.2-5.4s5 2.1 5.2 5.4H6.8Z"/>
+  <circle cx="5.8" cy="10.1" r="2.35" fill="#ff6f91"/>
+  <path fill="#ff6f91" d="M1.8 19.5c.15-2.6 1.6-4.3 4-4.3 1.1 0 2 .35 2.7 1.02-.75.83-1.25 1.92-1.42 3.28H1.8Z"/>
+  <circle cx="18.2" cy="10.1" r="2.35" fill="#7bc7f4"/>
+  <path fill="#7bc7f4" d="M15.5 16.22c.7-.67 1.6-1.02 2.7-1.02 2.4 0 3.85 1.7 4 4.3h-5.28c-.17-1.36-.67-2.45-1.42-3.28Z"/>
+  <path fill="none" stroke="#172b4d" stroke-linecap="round" stroke-width="1.2" d="M9.1 21h5.8"/>
 </svg>
