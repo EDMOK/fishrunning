@@ -7,8 +7,15 @@
 
   跃上云岛，穿过城市与夕阳海岸，在越来越快的节奏里收集白饭、突破机关，跑出属于自己的最高分。
 
-  <a href="https://github.com/EDMOK/fishrunning">GitHub 仓库</a>
-  ·
+  <a href="https://github.com/EDMOK/fishrunning" title="访问 fishrunning GitHub 仓库">
+    <img src="docs/github-icon.svg" alt="GitHub" width="28" height="28" />
+  </a>
+  <a href="#加入-qq-群" title="加入 QQ 群">
+    <img src="docs/qq-group-icon.svg" alt="加入 QQ 群" width="28" height="28" />
+  </a>
+  <br />
+  <sub>GitHub 仓库 · QQ 群入口</sub>
+  <br />
   <a href="#游戏简介">游戏简介</a>
   ·
   <a href="#操作">操作</a>
@@ -25,6 +32,14 @@
   <br />
   <sub>在明亮的 AI 公共城市中奔跑，观察障碍、收集白饭并规划下一步动作。</sub>
 </div>
+
+## 加入 QQ 群
+
+<a href="#加入-qq-群" title="查看 QQ 群加入方式">
+  <img src="docs/qq-group-icon.svg" alt="QQ 群" width="24" height="24" />
+</a>
+
+QQ群号：**1041665197**。点击上方 QQ 图标，或搜索群号加入交流、反馈问题和分享玩法。
 
 ## 游戏简介
 
