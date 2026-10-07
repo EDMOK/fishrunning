@@ -1,0 +1,26 @@
+{
+  "totalEvents": 39,
+  "addedFromOriginalDocument": [
+    "quota-spill",
+    "brain-reboot",
+    "economy-route",
+    "proxy-parcels",
+    "chip-reclaim"
+  ],
+  "characters": 5,
+  "frozenEventRoutes": 28,
+  "allChunks": 3657,
+  "counts": {
+    "quota-spill": 4,
+    "brain-reboot": 4,
+    "economy-route": 4,
+    "proxy-parcels": 12,
+    "chip-reclaim": 4
+  },
+  "safeGroundAndOptionalPlatforms": true,
+  "parcelPositions": [
+    0,
+    1,
+    2
+  ]
+}

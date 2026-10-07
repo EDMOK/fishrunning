@@ -1,6 +1,6 @@
 """把运行时静态文件收拢到 dist/，供 Cloudflare Pages 直接上传。
 
-只收游戏真正会加载的东西：index.html、src/、assets/。
+只收游戏真正会加载的东西：index.html、src/、assets/ 与标题页使用的两个 SVG 图标。
 assets/raw 与 image_形象/ 是重新生成素材用的源文件（见 .gitignore：
 「不随运行时公开版发布」），所以这里显式排除，免得它们哪天回到本地时
 被一起打包进 dist/。
@@ -27,7 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / 'dist'
-INCLUDE = ['index.html', 'src', 'assets']
+INCLUDE = ['index.html', 'src', 'assets', 'docs/github-icon.svg', 'docs/qq-group-icon.svg']
 SKIP_DIRS = [Path('assets/raw')]          # 只用于重新生成素材，不进公开版
 
 # 引用形如 src="src/game.js" 或 href="src/coast.css?v=旧串"：旧的版本串一律覆盖，
@@ -183,7 +183,9 @@ def main():
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(f, target)
         else:
-            shutil.copy2(src, DIST / item)
+            target = DIST / item
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, target)
 
     # 顺序要紧：先写素材版本串，game.js 的内容哈希才会反映这一步，
     # index.html 引用的也就是最终那份 game.js。

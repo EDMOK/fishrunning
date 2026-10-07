@@ -1,0 +1,459 @@
+{
+  "assets": [
+    "event/deepseek_outage_refund",
+    "event/qwen_quota_feast",
+    "event/gpt_rollback_feast",
+    "event/claude_permission_check",
+    "event/zhipu_flash_sale",
+    "event/gemini_multimodal_box",
+    "event/qwen_quota_spill",
+    "event/gemini_brain_reboot",
+    "event/gpt_economy_route",
+    "event/claude_proxy_parcels",
+    "event/zhipu_chip_reclaim"
+  ],
+  "cameo": {
+    "first": 1411.0256410256409,
+    "centers": [
+      1411.0256410256409,
+      1411.0256410256409,
+      1411.0256410256409,
+      1411.0256410256409,
+      1411.0256410256409,
+      1411.0256410256409,
+      1411.0256410256409,
+      1411.0256410256409,
+      1411.0256410256409,
+      1411.0256410256409
+    ]
+  },
+  "presentation": {
+    "stages": [
+      {
+        "id": "supply_dock",
+        "loaded": true
+      },
+      {
+        "id": "repair_dock",
+        "loaded": true
+      },
+      {
+        "id": "scanner_gate",
+        "loaded": true
+      },
+      {
+        "id": "market_stall",
+        "loaded": true
+      }
+    ],
+    "scenes": [
+      {
+        "id": "quota-feast",
+        "scene": "stage/supply_dock",
+        "line": "开饭啦，接住这一波！",
+        "center": 1411.0256410256409,
+        "stable": true,
+        "phases": [
+          "arrival",
+          "action",
+          "departure"
+        ]
+      },
+      {
+        "id": "outage-refund",
+        "scene": "stage/supply_dock",
+        "line": "饭和护盾都给你备好了。",
+        "center": 1411.0256410256409,
+        "stable": true,
+        "phases": [
+          "arrival",
+          "action",
+          "departure"
+        ]
+      },
+      {
+        "id": "rollback-feast",
+        "scene": "stage/repair_dock",
+        "line": "这版撤回，障碍下锅！",
+        "center": 1411.0256410256409,
+        "stable": true,
+        "phases": [
+          "arrival",
+          "action",
+          "departure"
+        ]
+      },
+      {
+        "id": "permission-nesting",
+        "scene": "stage/scanner_gate",
+        "line": "先验一次，再验一次。",
+        "center": 1411.0256410256409,
+        "stable": true,
+        "phases": [
+          "arrival",
+          "action",
+          "departure"
+        ]
+      },
+      {
+        "id": "flash-restock",
+        "scene": "stage/market_stall",
+        "line": "今天补货，六折开卖！",
+        "center": 1411.0256410256409,
+        "stable": true,
+        "phases": [
+          "arrival",
+          "action",
+          "departure"
+        ]
+      },
+      {
+        "id": "multimodal-box",
+        "scene": "stage/repair_dock",
+        "line": "看看盒子里藏着什么~",
+        "center": 1411.0256410256409,
+        "stable": true,
+        "phases": [
+          "arrival",
+          "action",
+          "departure"
+        ]
+      },
+      {
+        "id": "quota-spill",
+        "scene": "stage/supply_dock",
+        "line": "漏出来的饭也算你的！",
+        "center": 1411.0256410256409,
+        "stable": true,
+        "phases": [
+          "arrival",
+          "action",
+          "departure"
+        ]
+      },
+      {
+        "id": "brain-reboot",
+        "scene": "stage/repair_dock",
+        "line": "敲开箱子，重启开饭！",
+        "center": 1411.0256410256409,
+        "stable": true,
+        "phases": [
+          "arrival",
+          "action",
+          "departure"
+        ]
+      },
+      {
+        "id": "economy-route",
+        "scene": "stage/scanner_gate",
+        "line": "高级餐还在上面呢！",
+        "center": 1411.0256410256409,
+        "stable": true,
+        "phases": [
+          "arrival",
+          "action",
+          "departure"
+        ]
+      },
+      {
+        "id": "proxy-parcels",
+        "scene": "stage/scanner_gate",
+        "line": "有米粒印记的才是真货。",
+        "center": 1411.0256410256409,
+        "stable": true,
+        "phases": [
+          "arrival",
+          "action",
+          "departure"
+        ]
+      },
+      {
+        "id": "chip-reclaim",
+        "scene": "stage/repair_dock",
+        "line": "把三片拼回高速档！",
+        "center": 1411.0256410256409,
+        "stable": true,
+        "phases": [
+          "arrival",
+          "action",
+          "departure"
+        ]
+      }
+    ],
+    "crowdedSlotVisible": true
+  },
+  "rice": [
+    {
+      "id": "quota-feast",
+      "fired": true,
+      "queued": 24,
+      "expected": 24,
+      "count": 24,
+      "shield": false,
+      "walletUnchanged": true,
+      "hazards": 0
+    },
+    {
+      "id": "outage-refund",
+      "fired": true,
+      "queued": 12,
+      "expected": 12,
+      "count": 12,
+      "shield": true,
+      "walletUnchanged": true,
+      "hazards": 0
+    },
+    {
+      "id": "outage-refund",
+      "fired": true,
+      "queued": 16,
+      "expected": 16,
+      "count": 16,
+      "shield": true,
+      "walletUnchanged": true,
+      "hazards": 0
+    }
+  ],
+  "rollback": {
+    "behindAlive": true,
+    "aheadDead": true,
+    "unseenAlive": true,
+    "gaps": 1,
+    "platforms": 1,
+    "rice": 1,
+    "fallback": 6
+  },
+  "challenge": [
+    {
+      "failed": false,
+      "count": 2,
+      "before": 0,
+      "afterExpiry": 0,
+      "expired": true,
+      "results": [
+        {
+          "id": "permission-nesting",
+          "success": true,
+          "rice": 8
+        }
+      ],
+      "queued": [
+        8
+      ]
+    },
+    {
+      "failed": true,
+      "count": 2,
+      "before": 0,
+      "afterExpiry": 0,
+      "expired": true,
+      "results": [
+        {
+          "id": "permission-nesting",
+          "success": false,
+          "rice": 0
+        }
+      ],
+      "queued": []
+    }
+  ],
+  "challengeRun": [
+    {
+      "slide": true,
+      "done": true,
+      "failed": false,
+      "frames": 291,
+      "results": [
+        {
+          "id": "permission-nesting",
+          "success": true,
+          "rice": 8
+        }
+      ],
+      "lives": 3,
+      "shield": false
+    },
+    {
+      "slide": false,
+      "done": true,
+      "failed": true,
+      "frames": 304,
+      "results": [
+        {
+          "id": "permission-nesting",
+          "success": false,
+          "rice": 0
+        }
+      ],
+      "lives": 2,
+      "shield": false
+    }
+  ],
+  "lottery": [
+    {
+      "roll": 0,
+      "initial": true,
+      "unrevealed": true,
+      "after": {
+        "shield": true,
+        "magnet": 0,
+        "chip": 0
+      },
+      "kind": "shield",
+      "once": true
+    },
+    {
+      "roll": 1,
+      "initial": true,
+      "unrevealed": true,
+      "after": {
+        "shield": false,
+        "magnet": 6,
+        "chip": 0
+      },
+      "kind": "magnet",
+      "once": true
+    },
+    {
+      "roll": 2,
+      "initial": true,
+      "unrevealed": true,
+      "after": {
+        "shield": false,
+        "magnet": 0,
+        "chip": 4
+      },
+      "kind": "chip",
+      "once": true
+    },
+    {
+      "existingShield": true,
+      "shield": true,
+      "magnet": 6
+    },
+    {
+      "zonePreserved": true
+    },
+    {
+      "newRunReset": true
+    }
+  ],
+  "shop": {
+    "fired": true,
+    "stayedPlaying": true,
+    "prices": [
+      {
+        "actual": 30,
+        "expected": 30
+      },
+      {
+        "actual": 39,
+        "expected": 39
+      }
+    ],
+    "discounts": 2,
+    "time": 12,
+    "frozen": true,
+    "resumed": true
+  },
+  "originalPlan": {
+    "leak": {
+      "fired": true,
+      "count": 12,
+      "pending": 12,
+      "moving": true,
+      "hazards": 0
+    },
+    "reboot": {
+      "fired": true,
+      "done": true,
+      "failed": false,
+      "opened": true,
+      "frames": 115,
+      "results": [
+        {
+          "id": "brain-reboot",
+          "success": true,
+          "rice": 8
+        }
+      ],
+      "lives": 3
+    },
+    "unopened": {
+      "id": "brain-reboot",
+      "success": false,
+      "rice": 0
+    },
+    "economy": {
+      "platforms": 2,
+      "groundRice": 6,
+      "bigRice": 3,
+      "obstacles": 0,
+      "gaps": 0
+    },
+    "parcels": {
+      "empty": 2,
+      "real": true,
+      "harmless": true,
+      "gained": 5,
+      "once": true
+    },
+    "chip": {
+      "count": 3,
+      "power": 4,
+      "once": true,
+      "results": [
+        {
+          "id": "chip-reclaim",
+          "success": true,
+          "pieces": 3,
+          "power": "chip",
+          "seconds": 4
+        }
+      ]
+    },
+    "missed": {
+      "power": 0,
+      "result": {
+        "id": "chip-reclaim",
+        "success": false,
+        "pieces": 1,
+        "needed": 3
+      },
+      "lives": 3
+    }
+  },
+  "screens": [
+    {
+      "label": "desktop",
+      "width": 1280,
+      "height": 720,
+      "banner": {
+        "x": 877.9666137695312,
+        "y": 100.4000015258789,
+        "width": 375.63336181640625,
+        "height": 76.70000457763672
+      }
+    },
+    {
+      "label": "mobile",
+      "width": 844,
+      "height": 390,
+      "banner": {
+        "x": 549.0499877929688,
+        "y": 56.4000129699707,
+        "width": 200.54998779296875,
+        "height": 40.95000076293945
+      }
+    }
+  ],
+  "mobile": {
+    "touch": true,
+    "padVisible": true,
+    "bannerInside": true,
+    "bannerAboveControls": true
+  },
+  "missingArtFallback": true,
+  "errors": [],
+  "missing": []
+}

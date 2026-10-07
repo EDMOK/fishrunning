@@ -15,7 +15,7 @@
 (function(global){
   'use strict';
 
-  function create(data, api){
+  function create(data, api, extra){
     if(!data || !data.chunks || !data.chunks.length) return null;
     var S = data.strings || [];
     var chunks = data.chunks;
@@ -57,7 +57,7 @@
         topology: chunk.topology || 'ground', motif: chunk.motif || base,
         requiredActions: chunk.actions || [], optionalActions: chunk.optional || [],
         riskRoute: !!chunk.riskRoute, recovery: chunk.recovery || 'short',
-        event: chunk.event || '', proof: chunk.proof, chain:!!chunk.chain,handcrafted:!!chunk.handcrafted,intent:chunk.intent,skills:chunk.skills||[], ribbon:chunk.ribbon,
+        event: chunk.event || '', rewardCount:chunk.rewardCount||0, waves:chunk.waves||0, proof: chunk.proof, chain:!!chunk.chain,handcrafted:!!chunk.handcrafted,intent:chunk.intent,skills:chunk.skills||[], ribbon:chunk.ribbon,
         variety: variety,
         // The director weights by family, and combinations are rarely a single
         // family — so without this they lose to reward and platform beats and
@@ -80,6 +80,7 @@
     }
 
     var patterns = chunks.map(asPattern);
+    if(extra) (Array.isArray(extra)?extra:[extra]).forEach(function(d){if(d)patterns=patterns.concat(create(d,api).patterns);});
     var perBand = {}, byId = {}, variantCounts = {};
     patterns.forEach(function(p){
       var key=p.id+'@'+p.speed;variantCounts[key]=(variantCounts[key]||0)+1;
@@ -134,7 +135,7 @@
         var count=Math.max(1,Math.ceil((to-from)/c.spacing));
         for(var i=1;i<=count;i++)api.rice(from+(to-from)*i/count,c.heights?c.heights[(i+Math.floor(from/210))%c.heights.length]:c.y,c.kind);
       },
-      count: chunks.length
+      count: patterns.length
     };
   }
 

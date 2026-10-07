@@ -218,6 +218,7 @@
   var mods = { timed: [], perm: [] };
   var skillLevels = {}, sale = { t: 0, ids: [] };
   var eventDef = null, activeEventMod = null, eventT = 0, lastEventId = '', lastEventGroup = '';
+  var eventHistory = [], eventTopics = [], eventResults = [];
   var lastShopNotice = '';
 
   function mulOf(key) {
@@ -250,6 +251,7 @@
   }
   /** Full reset: run over / new run. Drops all event moods. */
   function clearMods() {
+    eventHistory.length=0;eventTopics.length=0;eventResults.length=0;
     mods.timed.length = 0;
     mods.perm.length = 0;
     eventDef = null; activeEventMod = null; eventT = 0;
@@ -257,6 +259,7 @@
 
   /** Zone change drops the outgoing district mood and active event. */
   function clearDistrictMods() {
+    revealLottery();
     mods.timed.length = 0;
     eventDef = null; activeEventMod = null; eventT = 0;
   }
@@ -270,7 +273,7 @@
   // that hole when this list was first written; if an effect "does nothing", the
   // first thing to check is whether its name is here and handled below.
   var INSTANT_TAGS = ['riceRain', 'openAll', 'wall', 'invuln', 'shock', 'lifeAdd',
-    'shield', 'shuffle', 'refreshPowers', 'magnet', 'discountShop', 'challenge'];
+    'shield', 'shuffle', 'refreshPowers', 'magnet', 'discountShop', 'challenge', 'refundRice', 'rollbackRice', 'rewardChallenge', 'powerLottery', 'routeEvent'];
 
   /** Split an effect table into instant actions and modifiers kept by the caller. */
   function applyEval(ev, fireInstant) {
@@ -368,6 +371,19 @@
     else if (k === 'magnet') player.power.magnet = Math.max(player.power.magnet, v * mulOf('powerMul'));
     else if (k === 'discountShop') openDiscountShop();
     else if (k === 'challenge') queueChallenge(v);
+    else if (k === 'refundRice') { riceRain(v+(player.shield?4:0));player.shield=true; }
+    else if (k === 'rollbackRice') { if(!openAllObstacles())riceRain(6); }
+    else if (k === 'rewardChallenge') queueChallenge(v.kind,v.rice);
+    else if (k === 'routeEvent') {
+      requestChunkEvent(v.kind,v.kind==='brain-reboot'?1150:180,Object.assign({group:eventGroup(eventDef),eventId:eventDef.id},v));
+      var lines={'quota-spill':'粮袋漏了！接住前方白饭','brain-reboot':'前方重启箱 · 下砸或冲刺打开','economy-route':'地面小份饭，站台上有大份饭','proxy-parcels':'包裹验货 · 认准实心米粒印记','chip-reclaim':'前方 3 片芯片 · 集齐恢复高速档'};
+      popText(camX+PLAYER_X+100,GROUND_Y-280,lines[v.kind]||'前方特别路段','#dfa943',25);
+    }
+    else if (k === 'powerLottery') {
+      var prize=pick(['shield','magnet','chip']);
+      if(prize==='shield'&&player.shield)prize='magnet';
+      eventDef.lottery={kind:prize,remaining:.7,applied:false};
+    }
     else if (k === 'refreshPowers') refreshAllPowers();
     else if (k === 'shuffle') shufflePowers();
   }
@@ -398,7 +414,7 @@
 
   /** Events request an authored chunk at a future boundary. */
   function riceRain(n) {
-    requestChunkEvent('rice', 180);
+    requestChunkEvent('rice', 180, {count:Math.max(1,Math.round(n||14))});
     popText(camX + PLAYER_X, player.y - 200, '前方白饭奖励段!', '#ffd166', 34);
   }
 
@@ -407,7 +423,7 @@
     var n = 0;
     for (var i = 0; i < obstacles.length; i++) {
       var o = obstacles[i];
-      if (o.dead) continue;
+      if (o.dead || o.x < camX+PLAYER_X+45 || o.x+o.w > camX+VIEW_W) continue;
       burst(o.x + o.w / 2, o.y + o.h / 2, {
         n: 14, col: RICE_COL, sp0: 90, sp1: 340, r0: 3, r1: 8, l0: .3, l1: .7, g: 620
       });
@@ -419,26 +435,28 @@
     popText(camX + PLAYER_X, player.y - 210, '权重放出来了!', '#8affc1', 34);
     GameAudio.sfx('shieldBreak');
     if (n) GameAudio.sfx('combo', 4);
+    return n;
   }
 
   // Event geometry is always replayed from the same frozen library.
-  function requestChunkEvent(kind, ahead) {
+  function requestChunkEvent(kind, ahead, options) {
     if (pendingChunkEvents.length >= 6) return;
-    pendingChunkEvents.push({kind:kind, earliest:camX + PLAYER_X + (ahead || 0)});
+    pendingChunkEvents.push(Object.assign({kind:kind, earliest:camX + PLAYER_X + (ahead || 0)},options||{}));
   }
   function queueWall(ahead) {
     requestChunkEvent('wall', ahead || 1150);
     popText(camX + PLAYER_X, player.y - 210, '前方设卡', '#ff9ad2', 32);
     GameAudio.sfx('power');
   }
-  function queueChallenge(kind) {
+  function queueChallenge(kind, rice) {
     if (['captcha','doublecheck','sweep','cacheflush'].indexOf(kind)<0) return;
-    requestChunkEvent(kind, 1150);
+    requestChunkEvent(kind, 1150, {successRice:rice||0, eventId:eventDef?eventDef.id:''});
     popText(camX + PLAYER_X, player.y - 210,
       kind === 'cacheflush' ? '前方缓存风暴' : kind === 'doublecheck' ? '连续滑动验证' : kind === 'sweep' ? '巡航验证条' : '前方滑动验证', '#ff9ad2', 28);
   }
 
   function openDiscountShop() {
+    if(sale.t>0)return;
     var available = SHOP_SKILLS.filter(function (s) { return (skillLevels[s.id] || 0) < s.costs.length; });
     sale.ids = [];
     // 2-3 of nine: one discount out of a big board is easy to miss, and the whole
@@ -526,6 +544,7 @@
   var genEvent = { next: 2400, count: 0 };
 
   function eventGroup(e) {
+    if(e.group)return e.group;
     if (e.id === 'discount') return 'shop';
     if (e.eval && (e.eval.wall || e.eval.challenge)) return 'hazard';
     if (e.eval && (e.eval.riceRain || e.eval.openAll || e.eval.refreshPowers)) return 'reward';
@@ -540,22 +559,33 @@
   }
 
   function fireEvent() {
-    if(practice||activeAction)return false;
+    if(practice||activeAction||zoneTransition.t>0)return false;
     if(Coast && Math.abs(runElapsed-Coast.scene.startTime)<10)return false;
     // Never overwrite a running modifier or its expiry handle with the next event.
     if (eventDef && eventT > 0) return false;
+    var hazardBusy=pendingChunkEvents.some(function(r){return r.group==='hazard'||(!r.group&&r.kind!=='rice');}) ||
+      actionBlocks.some(function(b){return b.eventKind&&!b.done&&b.eventGroup!=='reward';});
     var pool = EVENTS.filter(function (e) {
-      return e.id !== lastEventId && eventGroup(e) !== lastEventGroup &&
-        !(e.id === 'discount' && sale.t > 0);
+      var group=eventGroup(e),promotes=e.eval&&e.eval.discountShop;
+      return eventHistory.indexOf(e.id)<0 && group!==lastEventGroup &&
+        !(group==='hazard'&&hazardBusy) &&
+        !(promotes&&(sale.t>0||!SHOP_SKILLS.some(function(s){return (skillLevels[s.id]||0)<s.costs.length;}))) &&
+        (!e.minTier||tier()>=e.minTier) && (!e.requiresHint||seenHints[e.requiresHint]);
     });
     if (!pool.length) return false;
-    // A reward first, then a discount: both are readable introductions without
-    // an abrupt speed change or a new hazard on the player's first few beats.
     var introId = genEvent.count === 0 ? 'rush' : genEvent.count === 1 ? 'discount' : '';
-    var ev = pool.filter(function (e) { return e.id === introId; })[0] || pick(pool);
+    var fresh=pool.filter(function(e){return eventTopics.indexOf(e.topic||e.who)<0;});
+    var candidates=fresh.length?fresh:pool;
+    var groups=[];
+    candidates.forEach(function(e){var g=eventGroup(e);if(groups.indexOf(g)<0)groups.push(g);});
+    var chosenGroup=pick(groups);
+    var ev = pool.filter(function(e){return e.id===introId;})[0] ||
+      pick(candidates.filter(function(e){return eventGroup(e)===chosenGroup;}));
     genEvent.count++;
     lastEventId = ev.id; lastEventGroup = eventGroup(ev);
-    eventDef = ev; eventT = ev.dur || 2.8;
+    eventHistory.push(ev.id);if(eventHistory.length>5)eventHistory.shift();
+    eventTopics.push(ev.topic||ev.who);if(eventTopics.length>2)eventTopics.shift();
+    eventDef = Object.assign({},ev); eventT = ev.dur || 2.8;
     if (ev.shake) shake(ev.shake);
     if (ev.flash) game.flash = 0.85;
 
@@ -573,9 +603,23 @@
     return true;
   }
 
+  function revealLottery() {
+    var prize=eventDef&&eventDef.lottery;
+    if(!prize||prize.applied)return;
+    prize.applied=true;
+    if(prize.kind==='shield') {
+      if(player.shield)prize.kind='magnet';else player.shield=true;
+    }
+    if(prize.kind!=='shield')player.power[prize.kind]=Math.max(player.power[prize.kind],prize.kind==='chip'?4:6);
+    var label=prize.kind==='shield'?'一层防火墙':prize.kind==='chip'?'GPU 芯片 4 秒':'吸附 6 秒';
+    cx.evCue.textContent='开盒结果：'+label;
+    popText(camX+PLAYER_X,player.y-200,'盲盒开出：'+label,'#8ff3ff',28);
+    GameAudio.sfx('power');
+  }
   function updateEvent(dt) {
     if (zoneBannerT > 0) zoneBannerT -= dt;
     if (!eventDef) return;
+    if(eventDef.lottery&&!eventDef.lottery.applied){eventDef.lottery.remaining-=dt;if(eventDef.lottery.remaining<=0)revealLottery();}
     eventT -= dt;
     if (eventT > 0) return;
     if (activeEventMod) {
@@ -947,7 +991,7 @@
   // PNG path, painted ones become data URLs so the same `<img src>` works.
   var powerIconURL = {};
 
-  var ASSET_VERSION = '20261006-dynamic6';
+  var ASSET_VERSION = '20261007-event-scenes';
 
   /**
    * The single place an asset URL is built. The preloader and every later
@@ -1013,7 +1057,7 @@
   var PATHS = {
     hero: ['run_a', 'run_b', 'run_c', 'idle', 'jump', 'djump', 'apex', 'fall', 'hurt', 'cheer', 'slide'],
     obstacle: [],
-    item: ['rice', 'bigrice', 'chip', 'shield', 'magnet', 'overclock', 'dash', 'datacard', 'spark'],
+    item: ['rice', 'bigrice', 'chip', 'shield', 'magnet', 'overclock', 'dash', 'datacard', 'spark', 'event_parcel', 'chip_fragment'],
     ui: ['heart', 'heart_empty', 'emblem', 'marquee', 'pattern_ai', 'badge_score', 'badge_trophy',
       'icon_shop', 'icon_play', 'icon_pause', 'icon_sound', 'icon_mute', 'icon_home',
       'icon_restart'],
@@ -1029,10 +1073,12 @@
       'pulse_firewall_frames', 'swing_cable_frames', 'patrol_scout_frames'],
     platform: ['surface_cloud', 'surface_glass', 'cloud_island', 'collapse_data_frames'],
     coast: ['sky', 'road', 'cone', 'barrier', 'sweeper', 'gull', 'pelican'],
-    mascot: ['deepseek', 'qwen', 'zhipu', 'claude', 'gpt', 'gemini']
+    mascot: ['deepseek', 'qwen', 'zhipu', 'claude', 'gpt', 'gemini'],
+    stage: ['supply_dock','repair_dock','scanner_gate','market_stall'],
+    event: ['qwen_quota_feast','deepseek_outage_refund','gpt_rollback_feast','claude_permission_check','zhipu_flash_sale','gemini_multimodal_box','qwen_quota_spill','gemini_brain_reboot','gpt_economy_route','claude_proxy_parcels','zhipu_chip_reclaim']
   };
   var OPTIONAL_CATS = { 'bg/zones/arena': 1, 'bg/zones/market': 1, 'bg/zones/vault': 1,
-    'bg/zones/wall': 1, platform: 1, mascot: 1 };
+    'bg/zones/wall': 1, platform: 1, mascot: 1, event: 1, stage: 1 };
   // Keep alpha-heavy parallax layers lossless: lossy WebP leaves pale matte
   // fringes around the cutout skyline when it is composited over the sky.
   var ASSET_EXT = { 'coast/sky': '.webp', bg: '.webp',
@@ -1208,7 +1254,7 @@
     ? window.DSChunks.create(window.DSChunksData, {
         gap:addTrackGap, platform:addPlatform, addObstacle:addObstacle,
         rice:addRice, riskLine:addRiskLine, hint:hint
-      })
+      }, [window.DSEventChunksData,window.DSOriginEventChunksData])
     : null;
   var chunkTemplates = [];
   if (Chunks) Chunks.patterns.forEach(function(p) {
@@ -1248,6 +1294,17 @@
       if(b.done||x<b.end)return;
       b.done=true;
       if(b.entities.some(function(o){return o.failed&&!o.dead;})){b.failed=true;}
+      if(b.quest){
+        if(!b.quest.reported){b.quest.reported=true;eventResults.push({id:b.eventId,success:false,pieces:b.quest.collected,needed:3});popText(x+40,GROUND_Y-235,'芯片还差 '+(3-b.quest.collected)+' 片 · 下次再来','#79b9dc',24);}
+        if(eventResults.length>12)eventResults.shift();
+        return;
+      }
+      if(b.successRice){
+        var success=!b.failed&&(!b.needBreak||b.entities.some(function(o){return o.kind==='cargo'&&o.dead&&o.lootDropped;}));
+        eventResults.push({id:b.eventId,success:success,rice:success?b.successRice:0});
+        if(eventResults.length>12)eventResults.shift();
+        if(success){riceRain(b.successRice);popText(x+50,GROUND_Y-270,(b.needBreak?'重启成功！':'验证通过！')+'前方补给 '+b.successRice+' 颗','#dfa943',26);}
+      }
       if(b.failed){actionStats.failed++;actionStats.streak=0;actionStats.lastFailure=b.name;}
       else {
         actionStats.clears++;actionStats.streak++;actionStats.best=Math.max(actionStats.best,actionStats.streak);
@@ -1421,6 +1478,9 @@
 
   function addRice(x, y, kind) {
     kind = kind || 'rice';
+    var parcel=kind==='parcel-real'||kind==='parcel-empty',emptyParcel=kind==='parcel-empty',fragment=kind==='chip-fragment';
+    if(parcel)kind=emptyParcel?'rice':'bigrice';
+    if(fragment)kind='rice';
     var artKind = kind;
     var artScale = kind === 'bigrice' ? .8 : .72;
     if (kind === 'rice') {
@@ -1429,10 +1489,12 @@
       if (artKind === 'datacard') artScale = .42;
       if (artKind === 'spark') artScale = .64;
     }
+    if(parcel){artKind='event_parcel';artScale=.62;}
+    if(fragment){artKind='chip_fragment';artScale=.55;}
     var img = IMG['item/' + artKind] || IMG['item/' + kind];
     var pickup = {
       kind: kind, artKind: artKind, artScale: artScale, img: img, x: x, y: y,
-      r: kind === 'bigrice' ? 40 : 34,
+      r: kind === 'bigrice' ? 40 : 34, parcel:parcel, emptyParcel:emptyParcel, fragment:fragment,
       phase: rand(0, 6.28), got: false, pop: 0
     };
     pickups.push(pickup);
@@ -1620,6 +1682,11 @@
     stomp: '空中按住 ↓ 下砸，踩碎障碍',
     glide: '到最高点后按住跳跃键滑翔',
     dash: 'Shift 冲刺，撞碎小障碍',
+    slide: '低空验证条：按住 ↓ 滑铲通过',
+    'quota-spill':'粮袋漏了！接住前方白饭',
+    'economy-route':'地面小份饭 · 跳上站台拿大米饭',
+    'proxy-parcels':'真包裹是实心米粒印记 · 空壳不扣饭',
+    'chip-reclaim':'集齐前方 3 片芯片，恢复 GPU 高速档',
     gap: '前方跑道断开，连续跳上云岛',
     cargo: '运粮蟹车：跳过避让，冲刺或下砸开箱',
     spring: '鲸尾弹簧：落在顶面借力，侧面撞击会受伤',
@@ -1670,17 +1737,17 @@
       var transition = Coast && Math.abs(runElapsed-Coast.scene.startTime)<8;
       var rhythm = Experience.phase(runElapsed+segEta);
       var bandPool = Chunks.poolFor(naturalHere);
-      var p = null;
+      var p = null, eventRequest=null;
       if (practice) {
         p = Chunks.byId(practice.chunkId);
       } else {
         var requested = pendingChunkEvents[0];
         if (requested && gen.x >= requested.earliest && !(requested.kind==='rice' && restStreak)) {
-          var eventPool = bandPool.filter(function(c){return c.event===requested.kind && c.min<=t;});
+          var eventPool = bandPool.filter(function(c){return c.event===requested.kind && c.min<=t && (requested.kind!=='rice'||!requested.count||c.rewardCount===requested.count);});
           // Sweeping encounters are taught later; early requests use a safe slide prefab.
           if (!eventPool.length && requested.kind==='sweep') eventPool=bandPool.filter(function(c){return c.event==='captcha';});
           if (eventPool.length) {
-            p=pick(eventPool);pendingChunkEvents.shift();RouteDirector.record(p);
+            p=pick(eventPool);eventRequest=pendingChunkEvents.shift();RouteDirector.record(p);
           }
         }
         if (!p) {
@@ -1709,6 +1776,7 @@
       var xEndObst = gen.x, xEnd = gen.x, xStart = Infinity;
       for (var i = o0; i < obstacles.length; i++) {
         var o = obstacles[i];
+        if(o.kind==='drone'&&!seenHints.slide)hint('slide',o.x);
         xStart = Math.min(xStart, o.x);
         // Swept extent, not art width: a swaying obstacle reaches `motion`
         // beyond its art, and that reach must land inside the beat it belongs
@@ -1737,11 +1805,20 @@
       patternSegments.push({id:p.id,chunkId:p.chunkId,kind:'pattern',start:segment.start,end:xEnd,speed:designSpeed,frozen:!!p.frozen});
       restStreak = p.family==='reward' ? restStreak+1 : 0;
       generatedSegments.push(segment);
+      if(eventRequest&&eventRequest.group==='reward')hint(eventRequest.kind,gen.x-200);
+      if(eventRequest&&eventRequest.kind==='quota-spill')segment.pickups.forEach(function(p){p.leakPending=true;p.leakY=p.y;p.y-=135;});
+      if(eventRequest&&eventRequest.quest==='chip'){
+        segment.eventQuest={kind:'chip',collected:0,needed:3,complete:false,reported:false,eventId:eventRequest.eventId};
+        segment.pickups.forEach(function(p){if(p.fragment)p.quest=segment.eventQuest;});
+      }
       // Keep whole-segment rewards, now driven by the replayed chunk entities.
-      if (p.family!=='reward' && p.requiredActions.length>=2) {
-        var block={id:p.id,chunkId:p.chunkId,name:p.name,cue:'',kind:'chunk',frozen:true,
+      if ((p.family!=='reward' && (p.requiredActions.length>=2 || eventRequest)) || segment.eventQuest) {
+        var block={id:p.id,chunkId:p.chunkId,name:p.name,kind:'chunk',frozen:true,
           start:segment.start,end:segment.end,speed:p.speed,failed:false,done:false,entered:false,
-          entities:segment.obstacles.concat(segment.gaps,segment.platforms)};
+          cue:eventRequest&&eventRequest.kind==='brain-reboot'?'下砸/冲刺开箱，通过后补饭':segment.eventQuest?'集齐 3 片 → GPU 4 秒':'',
+          entities:segment.obstacles.concat(segment.gaps,segment.platforms),
+          eventKind:eventRequest?eventRequest.kind:'',eventId:eventRequest?eventRequest.eventId:'',successRice:eventRequest?eventRequest.successRice||0:0,
+          eventGroup:eventRequest?eventRequest.group||'hazard':'',needBreak:!!(eventRequest&&eventRequest.needBreak),quest:segment.eventQuest||null};
         block.entities.forEach(function(e){e.combo=block;});
         actionBlocks.push(block);
       }
@@ -1963,6 +2040,16 @@
       ctx.shadowBlur = 3;
       ctx.shadowOffsetY = 2;
       ctx.drawImage(img, sx - w / 2, p.y - h / 2 + bob, w, h);
+      if(p.parcel||p.fragment){
+        var badgeY=p.y-h/2+bob-12;
+        ctx.fillStyle=p.emptyParcel?'#8b9bad':'#fff3cd';ctx.strokeStyle=p.emptyParcel?'#536b85':'#ce9234';ctx.lineWidth=2;
+        ctx.beginPath();ctx.arc(sx,badgeY,13,0,Math.PI*2);ctx.fill();ctx.stroke();
+        if(p.fragment){ctx.fillStyle='#427fbc';ctx.fillRect(sx-5,badgeY-5,10,10);}
+        else {
+          ctx.fillStyle=p.emptyParcel?'#d8e4ef':'#d99c36';
+          for(var dot=0;dot<3;dot++){ctx.beginPath();ctx.ellipse(sx-6+dot*6,badgeY,2,5,.4,0,Math.PI*2);if(p.emptyParcel)ctx.stroke();else ctx.fill();}
+        }
+      }
       ctx.restore();
     }
   }
@@ -2255,6 +2342,99 @@
     ctx.globalAlpha = 1;
   }
 
+  function drawEventCameo() {
+    if(!eventDef||!eventDef.art||eventT<=0)return;
+    var img=IMG[eventDef.art];if(!img)return;
+    var elapsed=(eventDef.dur||2.8)-eventT,alpha=Math.min(1,elapsed/.25,eventT/.25);
+    var scene=eventDef.scene||'stage/supply_dock',stage=IMG[scene];
+    var stageW=scene==='stage/market_stall'?360:scene==='stage/scanner_gate'?320:300;
+    var stageH=stage?stageW*stage.naturalHeight/stage.naturalWidth:190,stageBottom=412;
+    var surface=scene==='stage/scanner_gate'?.68:scene==='stage/market_stall'?.69:scene==='stage/repair_dock'?.69:.66;
+    eventDef.scenePhase=elapsed<.45?'arrival':eventT<.45?'departure':'action';
+    var floor=stageBottom-stageH*(1-surface),characterH=scene==='stage/market_stall'?145:scene==='stage/scanner_gate'?160:190;
+    var characterW=characterH*img.naturalWidth/img.naturalHeight;
+    var top=floor-characterH,center=eventDef.cameoCenter===undefined?null:eventDef.cameoCenter;
+    var candidates=[VIEW_W-230,VIEW_W-480,PLAYER_X+470],bestScore=Infinity,bestCenter=candidates[0];
+    for(var i=0;center===null&&i<candidates.length;i++){
+      var x=candidates[i],left=x-170,right=x+170;
+      var occupied=obstacles.concat(platforms).filter(function(o){
+        if(o.dead)return false;
+        var sx=o.x-camX,oy=o.y===undefined?GROUND_Y-o.h:o.y;
+        return sx+(o.w||0)>left&&sx<right&&oy<416&&oy+(o.h||24)>105;
+      }).length*10+pickups.filter(function(p){return !p.got&&p.x-camX>left&&p.x-camX<right&&p.y>65&&p.y<456;}).length;
+      if(occupied<bestScore){bestScore=occupied;bestCenter=x;}
+      if(!occupied){center=x;break;}
+    }
+    if(center===null)center=bestCenter;
+    eventDef.cameoCenter=center;
+    eventDef.cameoBounds={left:center-190,top:105,width:380,height:311};
+    ctx.save();ctx.globalAlpha=Math.max(0,alpha);
+    // The whole vignette enters together and keeps one anchor until it exits.
+    ctx.translate(center+(1-alpha)*18,0);
+    if(stage)ctx.drawImage(stage,-stageW/2,stageBottom-stageH,stageW,stageH);
+    else {
+      ctx.fillStyle='rgba(236,248,255,.92)';ctx.strokeStyle='#79b9dc';ctx.lineWidth=2;
+      ctx.beginPath();ctx.ellipse(0,floor+8,120,17,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+    }
+    if(scene==='stage/scanner_gate'){
+      var scanY=184+((elapsed*.5)%1)*170;
+      ctx.fillStyle='rgba(104,205,240,.22)';ctx.fillRect(-105,scanY,210,3);
+      ctx.fillStyle='#78cae5';ctx.fillRect(-126,scanY-4,6,11);ctx.fillRect(120,scanY-4,6,11);
+    }
+    ctx.fillStyle='rgba(51,92,125,.15)';
+    ctx.beginPath();ctx.ellipse(0,floor-2,characterW*.27,7,0,0,Math.PI*2);ctx.fill();
+    ctx.save();ctx.shadowColor='rgba(59,98,134,.12)';ctx.shadowBlur=3;
+    ctx.globalAlpha*=clamp((elapsed-.4)/.35,0,1);
+    ctx.drawImage(img,-characterW/2,top,characterW,characterH);ctx.restore();
+
+    // Short spoken line, distinct from the banner's rules, makes this a scene.
+    var words=elapsed<.4?'装置启动中…':eventDef.sceneLine||eventDef.text||'',font=13;
+    ctx.font='700 '+font+'px "Noto Sans SC", sans-serif';
+    var bubbleW=Math.min(286,Math.max(136,ctx.measureText(words).width+28));
+    ctx.fillStyle='#fff9e9';ctx.strokeStyle='#e6c98c';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.roundRect(-bubbleW/2,113,bubbleW,34,11);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(14,147);ctx.lineTo(23,158);ctx.lineTo(29,147);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#83673e';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(words,0,130,bubbleW-20);
+
+    if(scene==='stage/supply_dock'){
+      var rice=IMG['item/rice'];
+      if(rice)for(var j=0;j<3;j++){
+        var f=(elapsed*.75+j*.32)%1,rx=76+j*16,ry=306+f*61;
+        ctx.save();ctx.globalAlpha=alpha*Math.sin(f*Math.PI);ctx.drawImage(rice,rx-11,ry-11,22,22);ctx.restore();
+      }
+    }
+    if(scene==='stage/repair_dock'){
+      var glow=.35+.2*Math.sin(elapsed*7);
+      ctx.strokeStyle='rgba(93,209,235,'+glow+')';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(104,337,18+Math.sin(elapsed*5)*3,0,Math.PI*2);ctx.stroke();
+      if(eventDef.id==='chip-reclaim'){
+        var fragment=IMG['item/chip_fragment'];
+        if(fragment)for(var piece=0;piece<3;piece++){
+          ctx.save();ctx.translate(83+piece*15,325-(piece%2)*18);ctx.rotate((piece-1)*.32);
+          ctx.drawImage(fragment,-13,-13,26,26);ctx.restore();
+        }
+      }
+    }
+    if(eventDef.id==='proxy-parcels'){
+      var parcel=IMG['item/event_parcel'];
+      if(parcel){
+        ctx.drawImage(parcel,-130,332,42,38);ctx.drawImage(parcel,88,332,42,38);
+        ctx.strokeStyle='#d4a047';ctx.lineWidth=2;ctx.beginPath();ctx.arc(-109,330,8,0,Math.PI*2);ctx.stroke();
+        ctx.fillStyle='#d4a047';ctx.beginPath();ctx.ellipse(-109,330,2,5,.4,0,Math.PI*2);ctx.fill();
+      }
+    }
+    if(scene==='stage/market_stall'){
+      ctx.fillStyle='#f5c866';
+      for(var coupon=0;coupon<3;coupon++){ctx.save();ctx.translate(-111+coupon*13,336-coupon*4);ctx.rotate(-.12);ctx.fillRect(-6,-8,12,16);ctx.restore();}
+    }
+    if(eventDef.lottery){
+      var key=eventDef.lottery.applied?eventDef.lottery.kind:['shield','magnet','chip'][Math.floor(elapsed*9)%3];
+      var icon=IMG['item/'+key];if(icon)ctx.drawImage(icon,87,239,44,44);
+    }
+    ctx.restore();
+  }
+
   function render() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, VW, VH);
@@ -2275,8 +2455,9 @@
     drawWorldBackdrop();
     drawTrackSurface();
     drawTrackGaps();
-    drawFloatingPlatforms();
     drawSpeedLines();
+    drawEventCameo();
+    drawFloatingPlatforms();
     drawPickups();
     drawPowerups();
     drawObstacles();
@@ -3124,7 +3305,22 @@
   function shake(v) { game.shake = Math.max(game.shake, v); }
 
   function collectRice(p) {
+    if(p.got)return;
     p.got = true;
+    if(p.emptyParcel){
+      popText(p.x,p.y-42,'空壳包裹 · 不扣饭','#79b9dc',22);GameAudio.sfx('coin');return;
+    }
+    if(p.fragment&&p.quest){
+      var quest=p.quest;quest.collected++;
+      popText(p.x,p.y-44,'芯片 '+quest.collected+'/3','#79b9dc',24);GameAudio.sfx('coin');
+      if(quest.collected===quest.needed&&!quest.complete){
+        quest.complete=true;quest.reported=true;player.power.chip=Math.max(player.power.chip,4);
+        eventResults.push({id:quest.eventId,success:true,pieces:3,power:'chip',seconds:4});
+        if(eventResults.length>12)eventResults.shift();
+        popText(p.x,p.y-94,'高速档找回来了！GPU 4 秒','#8ff3ff',28);GameAudio.sfx('power');
+      }
+      return;
+    }
     progressGoal('rice');
     var big = p.kind === 'bigrice';
     var line = p.riskLine && riskLines[p.riskLine];
@@ -3520,7 +3716,7 @@
         // `travel` (not `speed`) is what the near-miss window below must use,
         // because a dashing frame covers almost twice the ground.
         if(trySpring(o,ob,prevFoot)){pb=playerBox();}
-        else if (!tryStomp(o, ob, prevFoot)) { o.failed=true;o.nearMiss = true; damage(o); }
+        else if (!tryStomp(o, ob, prevFoot)) { o.failed=true;if(o.combo&&o.combo.successRice&&!o.combo.needBreak)o.combo.failed=true;o.nearMiss = true; damage(o); }
       } else if (ob.x + ob.w <= pb.x + pb.w && ob.x + ob.w >= pb.x + pb.w - speed * dt - 10) {
         rewardNearMiss(o);
       }
@@ -3546,6 +3742,10 @@
         p.pop += dt * 3.2;
         if (p.pop > 0.5) pickups.splice(j, 1);
         continue;
+      }
+      if(p.leakPending){
+        if(p.x-camX>VIEW_W-60)continue;
+        p.leakPending=false;p.spill={x:p.x,y:p.y,toX:p.x,toY:p.leakY,t:0};
       }
       if(p.spill){
         var f=p.spill;f.t=Math.min(1,f.t+dt/.38);var e=1-Math.pow(1-f.t,2);
@@ -4191,6 +4391,7 @@
   // Read-only introspection hook. Used by the headless autopilot smoke test and
   // handy in the devtools console; it cannot mutate the run.
   window.DSGame = {
+    events:function(){return {active:eventDef,time:eventT,history:eventHistory.slice(),topics:eventTopics.slice(),results:eventResults.slice(),sale:{ids:sale.ids.slice(),time:sale.t}};},
     practice:startPractice,
     actionTemplates:function(){return chunkTemplates;},
     state: function () { return game; },

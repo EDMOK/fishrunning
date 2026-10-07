@@ -1,0 +1,62 @@
+[
+  {
+    "id": "supply_dock",
+    "subject": "A tiny floating rice supply dock: a blue-white curved cloud-city platform base with a little rice basket on the left, two small rice bowls on the right, a slim golden serving rail. Central upper area COMPLETELY EMPTY so a separate mascot can stand there. No tall arch; most structure in the bottom third.",
+    "source": "C:\\Users\\AMDNOW\\.codex\\generated_images\\01a1149c-3db6-70c3-bf67-72ac912526d9\\exec-75c7bf78-869d-4c18-8759-0a8c0b30fd59.png",
+    "runtimeSize": [
+      600,
+      394
+    ],
+    "runtimeBytes": 224204,
+    "alpha": [
+      0,
+      255
+    ],
+    "prompt": "Use case: stylized-concept. Create a transparent-background 2D game scenery cutout, not a UI card, for a bright anime endless runner floating city. A tiny floating rice supply dock: a blue-white curved cloud-city platform base with a little rice basket on the left, two small rice bowls on the right, a slim golden serving rail. Central upper area COMPLETELY EMPTY so a separate mascot can stand there. No tall arch; most structure in the bottom third. Style: polished hand-illustrated game prop, clean thick dark-blue contour, bright blue-white tech shells, subtle warm golden/orange accents, cloud-city architecture, soft material shading, gentle 3/4 front view. Composition: one compact complete miniature set, centered with all parts and shadow glow inside generous transparent padding. Exactly zero characters. No letters, numbers, words, company logos, watermark, rectangular background, full landscape, floor outside the little floating base. True alpha transparency. This will be rendered at about 300 pixels wide, details should stay simple and readable."
+  },
+  {
+    "id": "repair_dock",
+    "subject": "A tiny floating futuristic repair dock: blue-white curved workshop platform, slim tool rack on the left and a low glowing chip-repair console on the right, small circuit motifs. Central upper area COMPLETELY EMPTY for a separate mascot. Most structure in the bottom third, no tall backboard.",
+    "source": "C:\\Users\\AMDNOW\\.codex\\generated_images\\01a1149c-3db6-70c3-bf67-72ac912526d9\\exec-f7218a60-3403-496a-ab34-853c0f910500.png",
+    "runtimeSize": [
+      600,
+      382
+    ],
+    "runtimeBytes": 227118,
+    "alpha": [
+      0,
+      255
+    ],
+    "prompt": "Use case: stylized-concept. Create a transparent-background 2D game scenery cutout, not a UI card, for a bright anime endless runner floating city. A tiny floating futuristic repair dock: blue-white curved workshop platform, slim tool rack on the left and a low glowing chip-repair console on the right, small circuit motifs. Central upper area COMPLETELY EMPTY for a separate mascot. Most structure in the bottom third, no tall backboard. Style: polished hand-illustrated game prop, clean thick dark-blue contour, bright blue-white tech shells, subtle warm golden/orange accents, cloud-city architecture, soft material shading, gentle 3/4 front view. Composition: one compact complete miniature set, centered with all parts and shadow glow inside generous transparent padding. Exactly zero characters. No letters, numbers, words, company logos, watermark, rectangular background, full landscape, floor outside the little floating base. True alpha transparency. This will be rendered at about 300 pixels wide, details should stay simple and readable."
+  },
+  {
+    "id": "scanner_gate",
+    "subject": "A tiny floating inspection gateway: curved blue-white cloud-city platform base, two slim scanner posts at the left/right edges and a delicate open arch above, tiny side-screen with abstract dots. Wide open empty center for a separate full-body mascot; no opaque backboard.",
+    "source": "C:\\Users\\AMDNOW\\.codex\\generated_images\\01a1149c-3db6-70c3-bf67-72ac912526d9\\exec-f0d2b1f5-a106-439e-b020-9c78214e278c.png",
+    "runtimeSize": [
+      584,
+      500
+    ],
+    "runtimeBytes": 294404,
+    "alpha": [
+      0,
+      255
+    ],
+    "prompt": "Use case: stylized-concept. Create a transparent-background 2D game scenery cutout, not a UI card, for a bright anime endless runner floating city. A tiny floating inspection gateway: curved blue-white cloud-city platform base, two slim scanner posts at the left/right edges and a delicate open arch above, tiny side-screen with abstract dots. Wide open empty center for a separate full-body mascot; no opaque backboard. Style: polished hand-illustrated game prop, clean thick dark-blue contour, bright blue-white tech shells, subtle warm golden/orange accents, cloud-city architecture, soft material shading, gentle 3/4 front view. Composition: one compact complete miniature set, centered with all parts and shadow glow inside generous transparent padding. Exactly zero characters. No letters, numbers, words, company logos, watermark, rectangular background, full landscape, floor outside the little floating base. True alpha transparency. This will be rendered at about 300 pixels wide, details should stay simple and readable."
+  },
+  {
+    "id": "market_stall",
+    "subject": "A tiny floating futuristic market stall: blue-white curved cloud-city base, two thin support poles, a small pale-gold striped awning high above, low little merchandise trays at the sides. Wide open empty center for a separate full-body mascot. No opaque backboard.",
+    "source": "C:\\Users\\AMDNOW\\.codex\\generated_images\\01a1149c-3db6-70c3-bf67-72ac912526d9\\exec-2ad3bb44-5f82-4b15-9249-733dc8be4c2a.png",
+    "runtimeSize": [
+      600,
+      424
+    ],
+    "runtimeBytes": 264342,
+    "alpha": [
+      0,
+      255
+    ],
+    "prompt": "Use case: stylized-concept. Create a transparent-background 2D game scenery cutout, not a UI card, for a bright anime endless runner floating city. A tiny floating futuristic market stall: blue-white curved cloud-city base, two thin support poles, a small pale-gold striped awning high above, low little merchandise trays at the sides. Wide open empty center for a separate full-body mascot. No opaque backboard. Style: polished hand-illustrated game prop, clean thick dark-blue contour, bright blue-white tech shells, subtle warm golden/orange accents, cloud-city architecture, soft material shading, gentle 3/4 front view. Composition: one compact complete miniature set, centered with all parts and shadow glow inside generous transparent padding. Exactly zero characters. No letters, numbers, words, company logos, watermark, rectangular background, full landscape, floor outside the little floating base. True alpha transparency. This will be rendered at about 300 pixels wide, details should stay simple and readable."
+  }
+]

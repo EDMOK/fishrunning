@@ -1,0 +1,261 @@
+{
+  "chunks": 32,
+  "checks": [
+    {
+      "id": "event-rice-4@380#0",
+      "count": 4,
+      "waves": 1,
+      "seconds": 1.4,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-6@380#0",
+      "count": 6,
+      "waves": 1,
+      "seconds": 1.4,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-8@380#0",
+      "count": 8,
+      "waves": 1,
+      "seconds": 1.5210526315789474,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-12@380#0",
+      "count": 12,
+      "waves": 2,
+      "seconds": 2.278947368421053,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-14@380#0",
+      "count": 14,
+      "waves": 2,
+      "seconds": 2.6605263157894736,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-16@380#0",
+      "count": 16,
+      "waves": 2,
+      "seconds": 3.039473684210526,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-24@380#0",
+      "count": 24,
+      "waves": 3,
+      "seconds": 5.8,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-26@380#0",
+      "count": 26,
+      "waves": 2,
+      "seconds": 4.939473684210526,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-4@520#0",
+      "count": 4,
+      "waves": 1,
+      "seconds": 1.4,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-6@520#0",
+      "count": 6,
+      "waves": 1,
+      "seconds": 1.4,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-8@520#0",
+      "count": 8,
+      "waves": 1,
+      "seconds": 1.5192307692307692,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-12@520#0",
+      "count": 12,
+      "waves": 2,
+      "seconds": 2.2807692307692307,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-14@520#0",
+      "count": 14,
+      "waves": 2,
+      "seconds": 2.6596153846153845,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-16@520#0",
+      "count": 16,
+      "waves": 2,
+      "seconds": 3.0403846153846152,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-24@520#0",
+      "count": 24,
+      "waves": 3,
+      "seconds": 5.8,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-26@520#0",
+      "count": 26,
+      "waves": 2,
+      "seconds": 4.940384615384615,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-4@700#0",
+      "count": 4,
+      "waves": 1,
+      "seconds": 1.4,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-6@700#0",
+      "count": 6,
+      "waves": 1,
+      "seconds": 1.4,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-8@700#0",
+      "count": 8,
+      "waves": 1,
+      "seconds": 1.52,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-12@700#0",
+      "count": 12,
+      "waves": 2,
+      "seconds": 2.28,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-14@700#0",
+      "count": 14,
+      "waves": 2,
+      "seconds": 2.66,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-16@700#0",
+      "count": 16,
+      "waves": 2,
+      "seconds": 3.04,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-24@700#0",
+      "count": 24,
+      "waves": 3,
+      "seconds": 5.8,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-26@700#0",
+      "count": 26,
+      "waves": 2,
+      "seconds": 4.94,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-4@900#0",
+      "count": 4,
+      "waves": 1,
+      "seconds": 1.4,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-6@900#0",
+      "count": 6,
+      "waves": 1,
+      "seconds": 1.4,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-8@900#0",
+      "count": 8,
+      "waves": 1,
+      "seconds": 1.52,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-12@900#0",
+      "count": 12,
+      "waves": 2,
+      "seconds": 2.28,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-14@900#0",
+      "count": 14,
+      "waves": 2,
+      "seconds": 2.66,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-16@900#0",
+      "count": 16,
+      "waves": 2,
+      "seconds": 3.04,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-24@900#0",
+      "count": 24,
+      "waves": 3,
+      "seconds": 5.8,
+      "groundedExit": true,
+      "hazards": 0
+    },
+    {
+      "id": "event-rice-26@900#0",
+      "count": 26,
+      "waves": 2,
+      "seconds": 4.94,
+      "groundedExit": true,
+      "hazards": 0
+    }
+  ]
+}

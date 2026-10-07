@@ -1,0 +1,14 @@
+[
+  {
+    "id": "parcel",
+    "prompt": "A single closed futuristic delivery parcel for a cheerful anime 2D runner game, blue-white shell, silver straps, chunky rounded rectangular box with readable lid and latch, thick crisp dark-blue outline, warm yellow trim, slight 3/4 front view, centered, isolated game pickup sprite. No face, no letters, no logo, no rice symbol or badge (the game adds those separately). Exactly one small box, no floor/background/shadow rectangle, generous transparent margins, perfectly transparent background. Match bright blue-white futuristic city assets, clean game illustration readable at 70px.",
+    "source": "C:\\Users\\AMDNOW\\.codex\\generated_images\\01a1149c-3db6-70c3-bf67-72ac912526d9\\exec-497e46b0-4684-4665-b880-42609ae6f1d5.png",
+    "name": "event_parcel"
+  },
+  {
+    "id": "fragment",
+    "prompt": "One broken wedge-shaped fragment of a futuristic GPU chip for a cheerful 2D anime runner game. It is visibly ONLY ONE THIRD of a full hexagonal chip: a blue-white triangular wedge with one ragged zigzag broken edge, cyan circuitry and tiny gold contacts. It should look like a physical chip fragment, not a full chip, cloud, coin or square icon. Thick crisp dark-blue outline, bright polished game illustration, centered isolated pickup sprite, exactly one fragment, no letters/logos, no floor/background/shadow rectangle, generous transparent margins, perfectly transparent background, readable at 70px.",
+    "source": "C:\\Users\\AMDNOW\\.codex\\generated_images\\01a1149c-3db6-70c3-bf67-72ac912526d9\\exec-d6feb7da-a58a-4889-9fc7-3036c4df04b3.png",
+    "name": "chip_fragment"
+  }
+]

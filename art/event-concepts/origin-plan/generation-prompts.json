@@ -1,0 +1,47 @@
+[
+  {
+    "id": "quota-spill",
+    "who": "qwen",
+    "name": "qwen_quota_spill",
+    "source": "C:\\Users\\AMDNOW\\.codex\\generated_images\\01a1149c-3db6-70c3-bf67-72ac912526d9\\exec-13e7e9f4-5e14-483f-a087-e0f224094d60.png",
+    "reference": "assets/mascot/qwen.png",
+    "pose": "a small torn ration sack leaking several bright rice grains; she is surprised and tries to catch them with a scoop, playful determined expression",
+    "prompt": "Use case: stylized-concept. Create one transparent-background full-body anime game mascot cutout, matching the identity, hair color, outfit, distinctive ears/accessories and crisp chibi linework of the provided qwen character reference. This is a NEW event pose, not a new character. Subject/action: a small torn ration sack leaking several bright rice grains; she is surprised and tries to catch them with a scoop, playful determined expression. Keep all limbs and props inside the canvas with generous transparent padding. Clear compact silhouette readable at 200 game pixels high, polished blue-white futuristic game material, warm orange/gold accents, thick clean outlines, no background, no floor, no shadow rectangle, no letters, numbers, words, company logos or watermark. Exactly one character and the described props. Preserve the reference costume and identity. Intended asset name qwen_quota_spill.png."
+  },
+  {
+    "id": "brain-reboot",
+    "who": "gemini",
+    "name": "gemini_brain_reboot",
+    "source": "C:\\Users\\AMDNOW\\.codex\\generated_images\\01a1149c-3db6-70c3-bf67-72ac912526d9\\exec-675a686c-f4e1-4360-8418-635474db7b95.png",
+    "reference": "assets/mascot/gemini.png",
+    "pose": "a chunky blue-white reboot crate with a glowing abstract chip at its center; she taps it with a small rubber toy mallet, comical confused expression turning determined",
+    "prompt": "Use case: stylized-concept. Create one transparent-background full-body anime game mascot cutout, matching the identity, hair color, outfit, distinctive ears/accessories and crisp chibi linework of the provided gemini character reference. This is a NEW event pose, not a new character. Subject/action: a chunky blue-white reboot crate with a glowing abstract chip at its center; she taps it with a small rubber toy mallet, comical confused expression turning determined. Keep all limbs and props inside the canvas with generous transparent padding. Clear compact silhouette readable at 200 game pixels high, polished blue-white futuristic game material, warm orange/gold accents, thick clean outlines, no background, no floor, no shadow rectangle, no letters, numbers, words, company logos or watermark. Exactly one character and the described props. Preserve the reference costume and identity. Intended asset name gemini_brain_reboot.png."
+  },
+  {
+    "id": "economy-route",
+    "who": "gpt",
+    "name": "gpt_economy_route",
+    "source": "C:\\Users\\AMDNOW\\.codex\\generated_images\\01a1149c-3db6-70c3-bf67-72ac912526d9\\exec-25f39029-9e54-432d-8ca2-467861f2ef19.png",
+    "reference": "assets/mascot/gpt.png",
+    "pose": "two contrasting travel tickets, a fancy gold ticket and a tiny economy stub, and a folded route map with simple branching arrows; bemused expression as she points toward the map",
+    "prompt": "Use case: stylized-concept. Create one transparent-background full-body anime game mascot cutout, matching the identity, hair color, outfit, distinctive ears/accessories and crisp chibi linework of the provided gpt character reference. This is a NEW event pose, not a new character. Subject/action: two contrasting travel tickets, a fancy gold ticket and a tiny economy stub, and a folded route map with simple branching arrows; bemused expression as she points toward the map. Keep all limbs and props inside the canvas with generous transparent padding. Clear compact silhouette readable at 200 game pixels high, polished blue-white futuristic game material, warm orange/gold accents, thick clean outlines, no background, no floor, no shadow rectangle, no letters, numbers, words, company logos or watermark. Exactly one character and the described props. Preserve the reference costume and identity. Intended asset name gpt_economy_route.png."
+  },
+  {
+    "id": "proxy-parcels",
+    "who": "claude",
+    "name": "claude_proxy_parcels",
+    "source": "C:\\Users\\AMDNOW\\.codex\\generated_images\\01a1149c-3db6-70c3-bf67-72ac912526d9\\exec-413c8242-c9a0-4f06-a2f8-3c0e543fadac.png",
+    "reference": "assets/mascot/claude.png",
+    "pose": "a parcel with a loose theatrical robot face mask peeling away, and an open parcel revealing a rice bowl; she examines them with a small magnifying glass, skeptical playful expression",
+    "prompt": "Use case: stylized-concept. Create one transparent-background full-body anime game mascot cutout, matching the identity, hair color, outfit, distinctive ears/accessories and crisp chibi linework of the provided claude character reference. This is a NEW event pose, not a new character. Subject/action: a parcel with a loose theatrical robot face mask peeling away, and an open parcel revealing a rice bowl; she examines them with a small magnifying glass, skeptical playful expression. Keep all limbs and props inside the canvas with generous transparent padding. Clear compact silhouette readable at 200 game pixels high, polished blue-white futuristic game material, warm orange/gold accents, thick clean outlines, no background, no floor, no shadow rectangle, no letters, numbers, words, company logos or watermark. Exactly one character and the described props. Preserve the reference costume and identity. Intended asset name claude_proxy_parcels.png."
+  },
+  {
+    "id": "chip-reclaim",
+    "who": "zhipu",
+    "name": "zhipu_chip_reclaim",
+    "source": "C:\\Users\\AMDNOW\\.codex\\generated_images\\01a1149c-3db6-70c3-bf67-72ac912526d9\\exec-d81ce459-d2a3-4201-99e9-8f6cbd985655.png",
+    "reference": "assets/mascot/zhipu.png",
+    "pose": "three separated blue glowing chip fragments that fit together like a jigsaw, held above a little repair tray; she is excitedly repairing the chip, ears perked up",
+    "prompt": "Use case: stylized-concept. Create one transparent-background full-body anime game mascot cutout, matching the identity, hair color, outfit, distinctive ears/accessories and crisp chibi linework of the provided zhipu character reference. This is a NEW event pose, not a new character. Subject/action: three separated blue glowing chip fragments that fit together like a jigsaw, held above a little repair tray; she is excitedly repairing the chip, ears perked up. Keep all limbs and props inside the canvas with generous transparent padding. Clear compact silhouette readable at 200 game pixels high, polished blue-white futuristic game material, warm orange/gold accents, thick clean outlines, no background, no floor, no shadow rectangle, no letters, numbers, words, company logos or watermark. Exactly one character and the described props. Preserve the reference costume and identity. Intended asset name zhipu_chip_reclaim.png."
+  }
+]

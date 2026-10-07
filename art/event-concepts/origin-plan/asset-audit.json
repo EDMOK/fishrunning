@@ -1,0 +1,87 @@
+[
+  {
+    "id": "quota-spill",
+    "file": "assets/event/qwen_quota_spill.png",
+    "width": 420,
+    "height": 447,
+    "bytes": 289767,
+    "originalAlpha": [
+      0,
+      255
+    ],
+    "bounds": [
+      0,
+      0,
+      1208,
+      1285
+    ]
+  },
+  {
+    "id": "brain-reboot",
+    "file": "assets/event/gemini_brain_reboot.png",
+    "width": 420,
+    "height": 435,
+    "bytes": 320978,
+    "originalAlpha": [
+      0,
+      255
+    ],
+    "bounds": [
+      0,
+      6,
+      1214,
+      1263
+    ]
+  },
+  {
+    "id": "economy-route",
+    "file": "assets/event/gpt_economy_route.png",
+    "width": 320,
+    "height": 480,
+    "bytes": 279522,
+    "originalAlpha": [
+      0,
+      254
+    ],
+    "bounds": [
+      0,
+      0,
+      1024,
+      1536
+    ]
+  },
+  {
+    "id": "proxy-parcels",
+    "file": "assets/event/claude_proxy_parcels.png",
+    "width": 289,
+    "height": 480,
+    "bytes": 244601,
+    "originalAlpha": [
+      0,
+      255
+    ],
+    "bounds": [
+      0,
+      0,
+      973,
+      1617
+    ]
+  },
+  {
+    "id": "chip-reclaim",
+    "file": "assets/event/zhipu_chip_reclaim.png",
+    "width": 320,
+    "height": 480,
+    "bytes": 236553,
+    "originalAlpha": [
+      0,
+      254
+    ],
+    "bounds": [
+      0,
+      0,
+      1024,
+      1536
+    ]
+  }
+]

@@ -111,6 +111,232 @@
   // kind: 'timed' 有持续时间并会还原；'instant' 立刻结算。
   var EVENTS = [
     {
+      "id": "quota-spill",
+      "title": "额度缩水，袋子漏饭了",
+      "who": "qwen",
+      "text": "袋子缩水了，漏出来的饭可没缩水！",
+      "cue": "前方 12 颗漏饭 · 接住才算你的",
+      "topic": "quota",
+      "group": "reward",
+      "eval": {
+        "routeEvent": {
+          "kind": "quota-spill"
+        }
+      },
+      "art": "event/qwen_quota_spill",
+      "kind": "instant",
+      "dur": 3.6,
+      "originPlanTopic": "quota",
+      "src": "依据 2026-10-06 多高度路线与 AI 奇闻事件计划；虚构游戏演绎，不断言现实平台行为",
+      "scene": "stage/supply_dock",
+      "sceneLine": "漏出来的饭也算你的！"
+    },
+    {
+      "id": "brain-reboot",
+      "title": "脑袋卡住了，敲箱重启",
+      "who": "gemini",
+      "text": "答案卡在箱子里了，敲开看看！",
+      "cue": "可跳过 · 下砸/冲刺开箱并通过，再补 8 颗饭",
+      "topic": "quality",
+      "group": "hazard",
+      "minTier": 1,
+      "requiresHint": "cargo",
+      "eval": {
+        "routeEvent": {
+          "kind": "brain-reboot",
+          "successRice": 8,
+          "needBreak": true
+        }
+      },
+      "art": "event/gemini_brain_reboot",
+      "kind": "instant",
+      "dur": 3.6,
+      "originPlanTopic": "quality",
+      "src": "依据 2026-10-06 多高度路线与 AI 奇闻事件计划；虚构游戏演绎，不断言现实平台行为",
+      "scene": "stage/repair_dock",
+      "sceneLine": "敲开箱子，重启开饭！"
+    },
+    {
+      "id": "economy-route",
+      "title": "高级车票，经济站台",
+      "who": "gpt",
+      "text": "车票没变，站台变矮了。高级餐还在上面！",
+      "cue": "地面 6 颗饭 · 可选站台上有 3 颗大米饭",
+      "topic": "routing",
+      "group": "reward",
+      "minTier": 1,
+      "eval": {
+        "routeEvent": {
+          "kind": "economy-route"
+        }
+      },
+      "art": "event/gpt_economy_route",
+      "kind": "instant",
+      "dur": 3.6,
+      "originPlanTopic": "routing",
+      "src": "依据 2026-10-06 多高度路线与 AI 奇闻事件计划；虚构游戏演绎，不断言现实平台行为",
+      "scene": "stage/scanner_gate",
+      "sceneLine": "高级餐还在上面呢！"
+    },
+    {
+      "id": "proxy-parcels",
+      "title": "中转站面具掉了",
+      "who": "claude",
+      "text": "名字都很高级，里面有饭的只有一包。",
+      "cue": "认准实心米粒印记 · 空壳不扣饭、不扣命",
+      "topic": "identity",
+      "group": "reward",
+      "minTier": 1,
+      "eval": {
+        "routeEvent": {
+          "kind": "proxy-parcels"
+        }
+      },
+      "art": "event/claude_proxy_parcels",
+      "kind": "instant",
+      "dur": 3.6,
+      "originPlanTopic": "identity",
+      "src": "依据 2026-10-06 多高度路线与 AI 奇闻事件计划；虚构游戏演绎，不断言现实平台行为",
+      "scene": "stage/scanner_gate",
+      "sceneLine": "有米粒印记的才是真货。"
+    },
+    {
+      "id": "chip-reclaim",
+      "title": "默认降档，把芯片找回来",
+      "who": "zhipu",
+      "text": "高速档被拆成碎片了，捡回来就能装好！",
+      "cue": "集齐 3 片芯片 → GPU 加速 4 秒",
+      "topic": "defaults",
+      "group": "reward",
+      "minTier": 1,
+      "eval": {
+        "routeEvent": {
+          "kind": "chip-reclaim",
+          "quest": "chip"
+        }
+      },
+      "art": "event/zhipu_chip_reclaim",
+      "kind": "instant",
+      "dur": 3.6,
+      "originPlanTopic": "defaults",
+      "src": "依据 2026-10-06 多高度路线与 AI 奇闻事件计划；虚构游戏演绎，不断言现实平台行为",
+      "scene": "stage/repair_dock",
+      "sceneLine": "把三片拼回高速档！"
+    },
+    {
+      "id": "quota-feast",
+      "title": "额度刷新，开饭！",
+      "who": "qwen",
+      "text": "额度补好了，饭也补好了！",
+      "cue": "前方 24 颗白饭 · 分三波收集",
+      "topic": "quota",
+      "group": "reward",
+      "eval": {
+        "riceRain": 24
+      },
+      "art": "event/qwen_quota_feast",
+      "kind": "instant",
+      "dur": 3.6,
+      "src": "虚构游戏事件，抽象自 AI 使用体验",
+      "scene": "stage/supply_dock",
+      "sceneLine": "开饭啦，接住这一波！"
+    },
+    {
+      "id": "outage-refund",
+      "title": "刚才掉线，赔你一顿",
+      "who": "deepseek",
+      "text": "刚才的掉线，补你一顿。",
+      "cue": "12 颗补给 + 护盾 · 已有护盾再补 4 颗",
+      "topic": "availability",
+      "group": "reward",
+      "eval": {
+        "refundRice": 12
+      },
+      "art": "event/deepseek_outage_refund",
+      "kind": "instant",
+      "dur": 3.6,
+      "src": "虚构游戏事件，抽象自 AI 使用体验",
+      "scene": "stage/supply_dock",
+      "sceneLine": "饭和护盾都给你备好了。"
+    },
+    {
+      "id": "rollback-feast",
+      "title": "回滚成功，障碍下锅",
+      "who": "gpt",
+      "text": "这版先撤回，障碍也一起撤。",
+      "cue": "前方可见障碍变大米饭 · 留意坑与平台",
+      "topic": "quality",
+      "group": "reward",
+      "eval": {
+        "rollbackRice": true
+      },
+      "art": "event/gpt_rollback_feast",
+      "kind": "instant",
+      "dur": 3.6,
+      "src": "虚构游戏事件，抽象自 AI 使用体验",
+      "scene": "stage/repair_dock",
+      "sceneLine": "这版撤回，障碍下锅！"
+    },
+    {
+      "id": "permission-nesting",
+      "title": "权限套娃，还要再验一次",
+      "who": "claude",
+      "text": "验证通过，再验证一下。",
+      "cue": "前方连续滑铲 · 无碰撞通过后补 8 颗白饭",
+      "topic": "verification",
+      "group": "hazard",
+      "eval": {
+        "rewardChallenge": {
+          "kind": "doublecheck",
+          "rice": 8
+        }
+      },
+      "art": "event/claude_permission_check",
+      "minTier": 2,
+      "requiresHint": "slide",
+      "kind": "instant",
+      "dur": 3.6,
+      "src": "虚构游戏事件，抽象自 AI 使用体验",
+      "scene": "stage/scanner_gate",
+      "sceneLine": "先验一次，再验一次。"
+    },
+    {
+      "id": "flash-restock",
+      "title": "套餐返场，技能甩卖",
+      "who": "zhipu",
+      "text": "补货了！这次真的有货！",
+      "cue": "随机 2–3 项技能六折 · 12 秒 · 可打开商店",
+      "topic": "pricing",
+      "group": "shop",
+      "eval": {
+        "discountShop": true
+      },
+      "art": "event/zhipu_flash_sale",
+      "kind": "instant",
+      "dur": 3.6,
+      "src": "虚构游戏事件，抽象自 AI 使用体验",
+      "scene": "stage/market_stall",
+      "sceneLine": "今天补货，六折开卖！"
+    },
+    {
+      "id": "multimodal-box",
+      "title": "多模态盲盒，开个惊喜",
+      "who": "gemini",
+      "text": "看得见、听得见，还能掉装备！",
+      "cue": "正在开盒 · 护盾 / 吸附 6 秒 / GPU 4 秒",
+      "topic": "multimodal",
+      "group": "reward",
+      "eval": {
+        "powerLottery": true
+      },
+      "art": "event/gemini_multimodal_box",
+      "kind": "instant",
+      "dur": 3.6,
+      "src": "虚构游戏事件，抽象自 AI 使用体验",
+      "scene": "stage/repair_dock",
+      "sceneLine": "看看盒子里藏着什么~"
+    },
+    {
       id: 'busy',
       title: '服务器繁忙，请稍后重试',
       who: 'deepseek',
@@ -331,6 +557,7 @@
     },
     {
       id: 'quota-shrink',
+      topic: 'quota',
       title: '套餐额度重新解释',
       who: 'qwen',
       text: '宣传页还是原来的宣传页，剩余额度却突然变短了。跑慢一点，先把能拿的白饭拿走。',
@@ -341,6 +568,7 @@
     },
     {
       id: 'quality-regression',
+      topic: 'quality',
       title: '模型突然学会了降智',
       who: 'gemini',
       text: '回答变短了，思路也变直了。二段跳与滑翔窗口缩短，别把高光路线当成必选项。',
@@ -351,6 +579,7 @@
     },
     {
       id: 'premium-fallback',
+      topic: 'routing',
       title: '高级模型路由到经济档',
       who: 'gpt',
       text: '账单仍按高级档计算，回答却绕路去了便宜节点。速度下降，前方暂时留出更多反应时间。',
@@ -361,6 +590,7 @@
     },
     {
       id: 'proxy-mask',
+      topic: 'identity',
       title: '中转站换上 Claude / GPT 的面具',
       who: 'claude',
       text: '名字写得很高级，跑近才发现是另一条路线。看准巡航验证条，滑铲通过。',
@@ -371,6 +601,7 @@
     },
     {
       id: 'silent-downgrade',
+      topic: 'defaults',
       title: '默认档位悄悄下调',
       who: 'deepseek',
       text: '没有公告，没有弹窗，只是输出变得更像自动补全。白饭少一点，但跑道会暂时变宽。',
