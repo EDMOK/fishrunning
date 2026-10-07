@@ -162,6 +162,8 @@ def audit():
 
 
 def main():
+    if DIST.resolve() != ROOT.resolve() / 'dist':
+        sys.exit('dist/ 解析到工作区之外，停止清理。')
     if DIST.is_symlink():
         sys.exit('dist/ 是个符号链接，停手不删。')
     if DIST.exists():
