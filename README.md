@@ -184,7 +184,12 @@ Windows 用户也可以双击仓库中的 `启动游戏.bat`。
 - `index.html`：页面、HUD、启动界面和运行时脚本入口
 - `src/game.js`：跑酷引擎、输入、碰撞、分区、事件和商店
 - `src/memes.js`：分区、事件、技能和内容数据
-- `src/route-patterns.js`：平台、空洞、障碍与收集物的路线编排
+- `src/chunks-data.js`：已验收的冻结赛道块，静态运行时必需，随代码提交
+- `src/chunks.js`：冻结块加载与实体回放
+- `src/chunk-director.js`：教学、长组合、防重复与恢复段的选择
+- `src/run-segments.js`：段落边界、入口/出口与恢复跑道契约
+- `tools/lib/authored-chunks.cjs`、`handcrafted-chunks.cjs`：预制配方与手工主题
+- `src/route-patterns.js` 等旧生成器：历史参考，入口不再加载
 - `src/obstacle-specials.js`：特色机关与动态陷阱的状态和绘制逻辑
 - `src/experience.js`：动作突破、连段和鲸跃时刻
 - `src/audio.js`：使用 Web Audio API 程序合成的音效与音乐
@@ -214,14 +219,21 @@ Windows 用户也可以双击仓库中的 `启动游戏.bat`。
 node --check src/game.js
 node --check src/memes.js
 node --check src/audio.js
-python tools/verify_balance.py
-node tools/verify_routes.cjs
-node tools/verify_experience.cjs
-node tools/verify_special_obstacles.cjs
-node tools/verify_dynamic_hazards_browser.cjs
+node tools/verify_chunks.cjs
+node tools/verify_dash_charges.cjs
+node tools/report_chunk_certificates.cjs
+node tools/verify_chunk_runtime.cjs
+node tools/verify_chunk_only_runtime.cjs
+node tools/audit_chunk_design.cjs
 ```
 
-离线平衡检查、路线检查和浏览器验证各自覆盖不同边界，不能完全替代真人试玩。动态陷阱的可读性、后期节奏和移动端实际手感仍应在目标设备上确认。
+浏览器检查需要先启动 `127.0.0.1:8123` 静态服务器。现有浏览器脚本使用开发机的 Playwright 与 Edge 绝对路径，换机器运行前需调整这两个路径。
+
+修改配方后运行 `node tools/build_chunks.cjs`，再执行 `node tools/verify_chunk_playthrough.cjs --unchecked`、`node tools/cache_chunk_playthrough.cjs` 并重新构建，直到保留块均有有效回放证书。失败回放会返回非零状态并写报告，导入结果后构建器剔除失败候选。`docs/chunk-engine-certificates.json` 参与筛选，需随配方、最终数据一起保存；引擎哈希改变后旧证书自动失效。
+
+只调整米粒分布时，可执行 `node tools/update_chunk_rewards.cjs` 保留已策展的障碍几何，再重新回放与导入证书。
+
+当前版本的设计及验证边界见 [手工赛道记录](docs/plans/2026-10-07-crafted-chunks.md)。旧的 `verify_balance.py`、`verify_routes.cjs` 和动作路线检查保留为历史工具，不代表当前冻结块已经通过验证。真人节奏与移动端手感仍需目标设备试玩。
 
 ## 部署
 

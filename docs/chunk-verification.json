@@ -1,0 +1,53 @@
+{
+  "chunks": 3597,
+  "bands": [
+    380,
+    520,
+    700,
+    900
+  ],
+  "families": {
+    "mixed": 1905,
+    "gap": 1187,
+    "platform": 469,
+    "reward": 36
+  },
+  "replayFailures": [],
+  "kinds": [
+    "buoy",
+    "cargo",
+    "crystals",
+    "drone",
+    "gate",
+    "mine",
+    "patrol",
+    "sentry",
+    "spring",
+    "turret"
+  ],
+  "traps": [
+    "cable",
+    "pulse",
+    "scout"
+  ],
+  "byBandFamily": {
+    "380:mixed": 283,
+    "520:mixed": 438,
+    "700:mixed": 581,
+    "900:mixed": 603,
+    "380:gap": 125,
+    "520:gap": 188,
+    "700:gap": 393,
+    "900:gap": 481,
+    "380:platform": 94,
+    "520:platform": 102,
+    "700:platform": 128,
+    "900:platform": 145,
+    "380:reward": 9,
+    "520:reward": 9,
+    "700:reward": 9,
+    "900:reward": 9
+  },
+  "variantGroups": 795,
+  "duplicateVariants": []
+}

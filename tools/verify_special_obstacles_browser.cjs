@@ -24,7 +24,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict');
  let s=await result('cargo-dash');assert.equal(s.lives,3);assert.equal(s.dead,true);assert.equal(s.dropped,true);assert.equal(s.lootMax,6);assert.equal(s.clear,1);assert.ok(s.rice>1);
  await start();await fixture('cargo',90);await page.keyboard.down('ArrowUp');await step(10);await page.keyboard.up('ArrowUp');await step(16);
  s=await result('cargo-jump');assert.equal(s.lives,3);assert.equal(s.dropped,false);assert.equal(s.clear,1);
- await start();await fixture('cargo',200);await page.keyboard.down('ArrowUp');await step(8);await page.keyboard.up('ArrowUp');await page.keyboard.down('ArrowDown');await step(14);await page.keyboard.up('ArrowDown');
+ await start();await fixture('cargo',200);await page.keyboard.down('ArrowUp');await step(8);await page.keyboard.up('ArrowUp');while(await page.evaluate(()=>DSGame.player().vy<=0))await step(1);await page.keyboard.down('ArrowDown');await step(14);await page.keyboard.up('ArrowDown');
  s=await result('cargo-stomp');assert.equal(s.lives,3);assert.equal(s.dropped,true);assert.equal(s.styles.stomp,true);
  await start();await fixture('spring',240);await page.keyboard.down('ArrowUp');await step(12);await page.keyboard.up('ArrowUp');await step(8);
  s=await result('spring-top');assert.equal(s.lives,3);assert.equal(s.bounced,true);assert.equal(s.styles.bounce,true);assert.equal(s.clear,1);

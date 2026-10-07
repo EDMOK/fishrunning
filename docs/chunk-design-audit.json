@@ -1,0 +1,619 @@
+{
+  "library": {
+    "chunks": 3597,
+    "recipes": 259,
+    "twoOrMoreObstacleKinds": {
+      "count": 3024,
+      "percent": 84.07
+    },
+    "twoOrMoreActionTypes": {
+      "count": 3150,
+      "percent": 87.57
+    },
+    "chains": {
+      "count": 2730,
+      "percent": 75.9
+    },
+    "actions6OrMore": {
+      "count": 1375,
+      "percent": 38.23
+    },
+    "uniqueActionOrders": 181,
+    "actions3OrMore": {
+      "count": 2971,
+      "percent": 82.6
+    },
+    "noObstacleEntities": {
+      "count": 87,
+      "percent": 2.42
+    },
+    "pureReward": {
+      "count": 12,
+      "percent": 0.33
+    },
+    "noGeometryOrPickups": 0,
+    "nonRewardWithoutHazards": {
+      "count": 0,
+      "percent": 0
+    },
+    "allChunksHaveRice": true,
+    "riceCount": {
+      "min": 4,
+      "median": 25,
+      "p95": 45,
+      "max": 65
+    },
+    "withinChunkEmptySeconds": {
+      "min": 0.11,
+      "median": 0.27,
+      "p95": 0.57,
+      "max": 0.91
+    },
+    "withinChunkGeometryFreeSeconds": {
+      "min": 0.36,
+      "median": 0.61,
+      "p95": 0.99,
+      "max": 1.86
+    }
+  },
+  "examples": [
+    {
+      "id": "prefab-three-step@700#0",
+      "actions": [
+        "jump",
+        "slide",
+        "jump"
+      ],
+      "obstacles": [
+        "mine",
+        "drone",
+        "crystals"
+      ],
+      "platforms": 0,
+      "gaps": 0,
+      "rice": 13,
+      "riceY": {
+        "min": 216.8,
+        "median": 454.7,
+        "p95": 564,
+        "max": 564
+      },
+      "length": 1549
+    },
+    {
+      "id": "prefab-wall-switch@700#0",
+      "actions": [
+        "jump",
+        "slide",
+        "jump"
+      ],
+      "obstacles": [
+        "gate",
+        "drone",
+        "patrol"
+      ],
+      "platforms": 0,
+      "gaps": 0,
+      "rice": 13,
+      "riceY": {
+        "min": 235,
+        "median": 454,
+        "p95": 564,
+        "max": 564
+      },
+      "length": 1549
+    },
+    {
+      "id": "prefab-roof-break@700#0",
+      "actions": [
+        "slide",
+        "jump",
+        "slide"
+      ],
+      "obstacles": [
+        "drone",
+        "drone"
+      ],
+      "platforms": 0,
+      "gaps": 1,
+      "rice": 12,
+      "riceY": {
+        "min": 451.6,
+        "median": 558,
+        "p95": 564,
+        "max": 564
+      },
+      "length": 1643
+    },
+    {
+      "id": "prefab-cloud-exit@700#1",
+      "actions": [
+        "platform",
+        "slide"
+      ],
+      "obstacles": [
+        "drone"
+      ],
+      "platforms": 4,
+      "gaps": 1,
+      "rice": 15,
+      "riceY": {
+        "min": 271.6,
+        "median": 435,
+        "p95": 564,
+        "max": 564
+      },
+      "length": 1969
+    },
+    {
+      "id": "prefab-choice-exit@700#0",
+      "actions": [
+        "choice",
+        "slide"
+      ],
+      "obstacles": [
+        "crystals",
+        "drone"
+      ],
+      "platforms": 2,
+      "gaps": 0,
+      "rice": 13,
+      "riceY": {
+        "min": 279.3,
+        "median": 449.9,
+        "p95": 564,
+        "max": 564
+      },
+      "length": 1783
+    },
+    {
+      "id": "prefab-spring-exit@700#0",
+      "actions": [
+        "bounce",
+        "slide"
+      ],
+      "obstacles": [
+        "spring",
+        "drone"
+      ],
+      "platforms": 2,
+      "gaps": 0,
+      "rice": 18,
+      "riceY": {
+        "min": 278.4,
+        "median": 508.5,
+        "p95": 564,
+        "max": 564
+      },
+      "length": 2203
+    },
+    {
+      "id": "prefab-final-switch@700#0",
+      "actions": [
+        "jump",
+        "slide",
+        "jump",
+        "jump"
+      ],
+      "obstacles": [
+        "sentry",
+        "drone",
+        "mine"
+      ],
+      "platforms": 0,
+      "gaps": 1,
+      "rice": 15,
+      "riceY": {
+        "min": 230,
+        "median": 449,
+        "p95": 564,
+        "max": 564
+      },
+      "length": 2063
+    }
+  ],
+  "runs": [
+    {
+      "seed": 4242,
+      "seconds": 199.99,
+      "segments": 47,
+      "openingEmptySeconds": 3.5,
+      "chainSegments": 28,
+      "long6Plus": 23,
+      "multiKindSegments": 32,
+      "maxZeroObstacleStreak": 1,
+      "maxPureStreak": 1,
+      "recoveryRunwaySeconds": {
+        "min": 0.22,
+        "median": 0.28,
+        "p95": 0.4,
+        "max": 0.46
+      },
+      "emptyTrack": [
+        {
+          "from": 12859.24,
+          "to": 13148.44,
+          "pixels": 289.2,
+          "seconds": 0.56,
+          "adjacent": [
+            "prefab-chain-086-spring-duck-spring-hop"
+          ]
+        },
+        {
+          "from": 6900.54,
+          "to": 7110.24,
+          "pixels": 209.7,
+          "seconds": 0.55,
+          "adjacent": [
+            "prefab-opening-hop-hop-duck-hop"
+          ]
+        },
+        {
+          "from": 3304.8,
+          "to": 3508.2,
+          "pixels": 203.4,
+          "seconds": 0.54,
+          "adjacent": [
+            "prefab-hop-duet"
+          ]
+        },
+        {
+          "from": 73861.34,
+          "to": 74143.04,
+          "pixels": 281.7,
+          "seconds": 0.54,
+          "adjacent": [
+            "prefab-rest-terrace"
+          ]
+        },
+        {
+          "from": 2191.1,
+          "to": 2380.7,
+          "pixels": 189.6,
+          "seconds": 0.5,
+          "adjacent": [
+            "prefab-low-high"
+          ]
+        }
+      ],
+      "geometryFree": [
+        {
+          "from": 6810.14,
+          "to": 8255.34,
+          "pixels": 1445.2,
+          "seconds": 3.56,
+          "adjacent": [
+            "prefab-opening-hop-hop-duck-hop",
+            "prefab-event-rice",
+            "prefab-spring-intro"
+          ]
+        },
+        {
+          "from": 57428.84,
+          "to": 58932.14,
+          "pixels": 1503.3,
+          "seconds": 2.15,
+          "adjacent": [
+            "prefab-event-sweep",
+            "prefab-rest-ground",
+            "prefab-score-spring-freight"
+          ]
+        },
+        {
+          "from": 131673.34,
+          "to": 133561.14,
+          "pixels": 1887.8,
+          "seconds": 2.1,
+          "adjacent": [
+            "prefab-score-fortress-switch",
+            "prefab-event-rice",
+            "prefab-score-broken-causeway"
+          ]
+        }
+      ],
+      "obstacleFree": [
+        {
+          "from": 40621.04,
+          "to": 44779.04,
+          "pixels": 4158,
+          "seconds": 5.94,
+          "adjacent": [
+            "prefab-chain-038-hop-duck-spring-hop-pit-bridge",
+            "prefab-event-rice",
+            "prefab-chain-133-bridge-duck-pit-hop-pit-cargo"
+          ]
+        },
+        {
+          "from": 20411.54,
+          "to": 23394.64,
+          "pixels": 2983.1,
+          "seconds": 4.26,
+          "adjacent": [
+            "prefab-score-dock-lowline",
+            "prefab-rest-terrace",
+            "prefab-buoy-intro"
+          ]
+        },
+        {
+          "from": 14145.94,
+          "to": 16298.24,
+          "pixels": 2152.3,
+          "seconds": 3.97,
+          "adjacent": [
+            "prefab-chain-146-pit-duck-bridge-pit",
+            "prefab-cargo-intro"
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "seed": 21943,
+      "seconds": 199.99,
+      "segments": 51,
+      "openingEmptySeconds": 3.5,
+      "chainSegments": 27,
+      "long6Plus": 25,
+      "multiKindSegments": 29,
+      "maxZeroObstacleStreak": 1,
+      "maxPureStreak": 1,
+      "recoveryRunwaySeconds": {
+        "min": 0.21,
+        "median": 0.28,
+        "p95": 0.4,
+        "max": 0.48
+      },
+      "emptyTrack": [
+        {
+          "from": 2233.9,
+          "to": 2431.3,
+          "pixels": 197.4,
+          "seconds": 0.52,
+          "adjacent": [
+            "prefab-low-duet"
+          ]
+        },
+        {
+          "from": 17426.65,
+          "to": 17692.65,
+          "pixels": 266,
+          "seconds": 0.51,
+          "adjacent": [
+            "prefab-event-cacheflush"
+          ]
+        },
+        {
+          "from": 16224.75,
+          "to": 16476.65,
+          "pixels": 251.9,
+          "seconds": 0.48,
+          "adjacent": [
+            "prefab-score-crystal-ladder"
+          ]
+        },
+        {
+          "from": 7024.85,
+          "to": 7186.75,
+          "pixels": 161.9,
+          "seconds": 0.43,
+          "adjacent": [
+            "prefab-opening-duck-hop-duck-hop"
+          ]
+        },
+        {
+          "from": 3397.7,
+          "to": 3558.5,
+          "pixels": 160.8,
+          "seconds": 0.42,
+          "adjacent": [
+            "prefab-low-high"
+          ]
+        }
+      ],
+      "geometryFree": [
+        {
+          "from": 6904.05,
+          "to": 8318.65,
+          "pixels": 1414.6,
+          "seconds": 3.03,
+          "adjacent": [
+            "prefab-opening-duck-hop-duck-hop",
+            "prefab-event-rice",
+            "prefab-cargo-intro"
+          ]
+        },
+        {
+          "from": 21330.85,
+          "to": 23069.57,
+          "pixels": 1738.72,
+          "seconds": 2.87,
+          "adjacent": [
+            "prefab-score-dock-three-read",
+            "prefab-rest-ground",
+            "prefab-buoy-intro"
+          ]
+        },
+        {
+          "from": 64584.61,
+          "to": 66034.71,
+          "pixels": 1450.1,
+          "seconds": 2.2,
+          "adjacent": [
+            "prefab-pulse-intro",
+            "prefab-rest-ground",
+            "prefab-score-spire-to-islands"
+          ]
+        }
+      ],
+      "obstacleFree": [
+        {
+          "from": 20524.15,
+          "to": 23069.57,
+          "pixels": 2545.42,
+          "seconds": 4.42,
+          "adjacent": [
+            "prefab-score-dock-three-read",
+            "prefab-rest-ground",
+            "prefab-buoy-intro"
+          ]
+        },
+        {
+          "from": 77372.61,
+          "to": 80264.61,
+          "pixels": 2892,
+          "seconds": 4.13,
+          "adjacent": [
+            "prefab-score-dock-lowline",
+            "prefab-rest-terrace",
+            "prefab-score-firewall-downbeat"
+          ]
+        },
+        {
+          "from": 61279.71,
+          "to": 63534.61,
+          "pixels": 2254.9,
+          "seconds": 3.22,
+          "adjacent": [
+            "prefab-score-fortress-switch",
+            "prefab-event-wall"
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "seed": 8129,
+      "seconds": 199.99,
+      "segments": 47,
+      "openingEmptySeconds": 3.5,
+      "chainSegments": 27,
+      "long6Plus": 20,
+      "multiKindSegments": 30,
+      "maxZeroObstacleStreak": 1,
+      "maxPureStreak": 1,
+      "recoveryRunwaySeconds": {
+        "min": 0.15,
+        "median": 0.3,
+        "p95": 0.42,
+        "max": 0.46
+      },
+      "emptyTrack": [
+        {
+          "from": 2170.9,
+          "to": 2431.3,
+          "pixels": 260.4,
+          "seconds": 0.69,
+          "adjacent": [
+            "prefab-hop-duet"
+          ]
+        },
+        {
+          "from": 3408.9,
+          "to": 3583.8,
+          "pixels": 174.9,
+          "seconds": 0.46,
+          "adjacent": [
+            "prefab-high-low"
+          ]
+        },
+        {
+          "from": 22040.43,
+          "to": 22329.93,
+          "pixels": 289.5,
+          "seconds": 0.41,
+          "adjacent": [
+            "prefab-buoy-intro"
+          ]
+        },
+        {
+          "from": 9324.45,
+          "to": 9533.95,
+          "pixels": 209.5,
+          "seconds": 0.4,
+          "adjacent": [
+            "prefab-spring-intro"
+          ]
+        },
+        {
+          "from": 16940.75,
+          "to": 17089.95,
+          "pixels": 149.2,
+          "seconds": 0.39,
+          "adjacent": [
+            "prefab-cargo-intro"
+          ]
+        }
+      ],
+      "geometryFree": [
+        {
+          "from": 20268.65,
+          "to": 21873.43,
+          "pixels": 1604.78,
+          "seconds": 3.09,
+          "adjacent": [
+            "prefab-score-dock-three-read",
+            "prefab-event-rice",
+            "prefab-buoy-intro"
+          ]
+        },
+        {
+          "from": 6974.55,
+          "to": 8363.15,
+          "pixels": 1388.6,
+          "seconds": 2.97,
+          "adjacent": [
+            "prefab-opening-hop-duck-hop-duck",
+            "prefab-event-rice",
+            "prefab-spring-intro"
+          ]
+        },
+        {
+          "from": 68630.87,
+          "to": 70128.07,
+          "pixels": 1497.2,
+          "seconds": 2.14,
+          "adjacent": [
+            "prefab-event-cacheflush",
+            "prefab-rest-vault",
+            "prefab-score-second-jump-spire"
+          ]
+        }
+      ],
+      "obstacleFree": [
+        {
+          "from": 19594.65,
+          "to": 21873.43,
+          "pixels": 2278.78,
+          "seconds": 4.86,
+          "adjacent": [
+            "prefab-score-dock-three-read",
+            "prefab-event-rice",
+            "prefab-buoy-intro"
+          ]
+        },
+        {
+          "from": 14762.15,
+          "to": 16696.55,
+          "pixels": 1934.4,
+          "seconds": 3.92,
+          "adjacent": [
+            "prefab-chain-065-fork-duck-pit-bridge",
+            "prefab-cargo-intro"
+          ]
+        },
+        {
+          "from": 103680.97,
+          "to": 106696.87,
+          "pixels": 3015.9,
+          "seconds": 3.35,
+          "adjacent": [
+            "prefab-score-double-jump-brake",
+            "prefab-rest-ground",
+            "prefab-chain-164-bridge-duck-tall-buoy-bridge-pit-spring"
+          ]
+        }
+      ],
+      "errors": []
+    }
+  ]
+}

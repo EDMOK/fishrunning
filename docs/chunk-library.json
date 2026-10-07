@@ -1,0 +1,452 @@
+{
+  "completion": {
+    "passed": 3597,
+    "rejected": 109,
+    "model": "120Hz unupgraded player; full swept hazard envelopes; closed pulse gates; turret shots; input buffers; witnessed dash and bounce where declared; ground exit"
+  },
+  "chunks": 3597,
+  "patterns": 259,
+  "duplicatesRemoved": 60,
+  "engineRejected": 451,
+  "engineChecked": 3597,
+  "byBand": {
+    "380": 511,
+    "520": 737,
+    "700": 1111,
+    "900": 1238
+  },
+  "byFamily": {
+    "mixed": 1905,
+    "gap": 1187,
+    "platform": 469,
+    "reward": 36
+  },
+  "score": {
+    "min": 0.36,
+    "p25": 5.39,
+    "median": 7,
+    "p75": 8.02,
+    "max": 9.87
+  },
+  "rejected": [],
+  "thinPairs": [
+    {
+      "pattern": "prefab-chain-006-duck-tall-pit-cargo-duck-bridge-hop",
+      "band": 520,
+      "kept": 0,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-014-fork-duck-tall-cargo-buoy-bridge-pit-spring",
+      "band": 520,
+      "kept": 0,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-017-pit-cargo-duck-bridge-cargo-buoy-bridge",
+      "band": 700,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-029-duck-spring-hop-pit-bridge-cargo",
+      "band": 520,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-029-duck-spring-hop-pit-bridge-cargo",
+      "band": 700,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-032-bridge-duck-fork-buoy-hop-spring",
+      "band": 700,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-034-bridge-cargo-fork-duck",
+      "band": 700,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-037-terrace-duck-terrace-hop-terrace",
+      "band": 520,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-037-terrace-duck-terrace-hop-terrace",
+      "band": 700,
+      "kept": 1,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-040-cargo-duck-cargo-bridge-hop",
+      "band": 700,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-041-bridge-cargo-bridge-duck",
+      "band": 520,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-044-fork-duck-tall-cargo-buoy-bridge-pit",
+      "band": 520,
+      "kept": 0,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-046-duck-terrace-pit-terrace-hop",
+      "band": 520,
+      "kept": 1,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-048-collapse-duck-pulse-cable-collapse-hop-bridge-pit",
+      "band": 700,
+      "kept": 1,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-053-hop-duck-buoy-bridge-hop-spring",
+      "band": 700,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-059-tall-duck-bridge-cargo-buoy-bridge-tall-spring",
+      "band": 520,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-070-cargo-duck-terrace-hop-terrace",
+      "band": 520,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-075-pulse-cargo-pulse-bridge-hop-duck-collapse",
+      "band": 700,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-082-bridge-hop-bridge-pit-duck-hop",
+      "band": 380,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-082-bridge-hop-bridge-pit-duck-hop",
+      "band": 700,
+      "kept": 1,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-083-pit-duck-tall-spring-tall",
+      "band": 520,
+      "kept": 1,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-088-hop-duck-pit-bridge-hop",
+      "band": 700,
+      "kept": 1,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-089-spring-duck-tall-cargo-buoy",
+      "band": 520,
+      "kept": 0,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-095-duck-tall-buoy-bridge-pit-spring",
+      "band": 520,
+      "kept": 0,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-098-fork-duck-pit-bridge-buoy",
+      "band": 520,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-100-hop-duck-cargo-bridge",
+      "band": 380,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-105-cargo-duck-bridge-hop-bridge-pit",
+      "band": 380,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-107-fork-duck-tall-buoy-bridge",
+      "band": 520,
+      "kept": 1,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-111-bridge-duck-tall-bridge",
+      "band": 520,
+      "kept": 0,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-115-terrace-duck-terrace-hop-terrace-pit",
+      "band": 700,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-116-duck-tall-buoy-bridge-pit",
+      "band": 520,
+      "kept": 0,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-116-duck-tall-buoy-bridge-pit",
+      "band": 700,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-118-hop-duck-cargo-pit-bridge-hop",
+      "band": 700,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-122-fork-hop-spring-tall-duck-bridge-buoy-fork",
+      "band": 520,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-126-bridge-duck-scout-pulse-tall-cargo-collapse-pit",
+      "band": 900,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-128-spring-tall-duck-bridge-duck-buoy-bridge",
+      "band": 520,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-135-collapse-duck-collapse-tall",
+      "band": 700,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-143-tall-pit-duck-bridge",
+      "band": 520,
+      "kept": 1,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-146-pit-duck-bridge-pit",
+      "band": 700,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-153-cable-collapse-duck-collapse-cargo-pit",
+      "band": 700,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-153-cable-collapse-duck-collapse-cargo-pit",
+      "band": 900,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-160-terrace-cargo-fork-duck-hop-bridge",
+      "band": 380,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-164-bridge-duck-tall-buoy-bridge-pit-spring",
+      "band": 520,
+      "kept": 1,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-164-bridge-duck-tall-buoy-bridge-pit-spring",
+      "band": 700,
+      "kept": 1,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-chain-180-bridge-duck-pulse-collapse-pulse-tall-bridge-pit",
+      "band": 900,
+      "kept": 2,
+      "candidates": 48,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-score-dock-breakout",
+      "band": 380,
+      "kept": 1,
+      "candidates": 20,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-score-freight-switchback",
+      "band": 520,
+      "kept": 0,
+      "candidates": 20,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-score-freight-switchback",
+      "band": 700,
+      "kept": 0,
+      "candidates": 20,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-score-freight-switchback",
+      "band": 900,
+      "kept": 0,
+      "candidates": 20,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-score-loading-bay",
+      "band": 700,
+      "kept": 0,
+      "candidates": 20,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-score-loading-bay",
+      "band": 900,
+      "kept": 0,
+      "candidates": 20,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-score-crystal-ladder",
+      "band": 520,
+      "kept": 2,
+      "candidates": 20,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-score-broken-causeway",
+      "band": 520,
+      "kept": 2,
+      "candidates": 20,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-score-broken-causeway",
+      "band": 700,
+      "kept": 2,
+      "candidates": 20,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-score-freight-islands",
+      "band": 380,
+      "kept": 1,
+      "candidates": 20,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-score-spire-to-islands",
+      "band": 700,
+      "kept": 2,
+      "candidates": 20,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-score-firewall-downbeat",
+      "band": 900,
+      "kept": 2,
+      "candidates": 20,
+      "reason": "completion/duplicate rejection"
+    },
+    {
+      "pattern": "prefab-score-scout-freight",
+      "band": 700,
+      "kept": 0,
+      "candidates": 20,
+      "reason": "completion/duplicate rejection"
+    }
+  ],
+  "bytes": 7174580,
+  "emittedRecipes": 259,
+  "handcrafted": {
+    "recipes": 24,
+    "chunks": 283
+  },
+  "rewardLayout": {
+    "originalLineRice": 195057,
+    "source": "scatter-clusters",
+    "beforeRice": 89542,
+    "rice": 89542
+  }
+}

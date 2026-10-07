@@ -1,0 +1,38 @@
+{
+  "results": [
+    {
+      "width": 844,
+      "height": 390,
+      "touch": true,
+      "linksOpened": 4,
+      "menuPreserved": true,
+      "errors": []
+    },
+    {
+      "width": 667,
+      "height": 375,
+      "touch": true,
+      "linksOpened": 4,
+      "menuPreserved": true,
+      "errors": []
+    },
+    {
+      "width": 568,
+      "height": 320,
+      "touch": true,
+      "linksOpened": 4,
+      "menuPreserved": true,
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "touch": false,
+      "linksOpened": 4,
+      "menuPreserved": true,
+      "errors": []
+    }
+  ],
+  "failures": 0,
+  "method": "Native touch/mouse input and popup navigation; external destination responses stubbed."
+}

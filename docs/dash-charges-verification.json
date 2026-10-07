@@ -1,0 +1,71 @@
+{
+  "results": [
+    {
+      "name": "level one gives exactly two bursts, then cooldown",
+      "passed": true,
+      "state": {
+        "charges": 2,
+        "cooldown": 0,
+        "dashing": 0,
+        "pips": 2,
+        "rice": 9930
+      }
+    },
+    {
+      "name": "unrelated purchases and reopening shop do not refill spent charges",
+      "passed": true,
+      "state": {
+        "charges": 1,
+        "cooldown": 0,
+        "dashing": 0,
+        "pips": 2,
+        "rice": 9880
+      }
+    },
+    {
+      "name": "an upgrade grants only newly added capacity",
+      "passed": true,
+      "state": {
+        "charges": 2,
+        "cooldown": 0,
+        "dashing": 0,
+        "pips": 3,
+        "rice": 9810
+      }
+    },
+    {
+      "name": "upgrading during cooldown does not cancel or reset cooldown",
+      "passed": true,
+      "state": {
+        "charges": 3,
+        "cooldown": 0,
+        "dashing": 0,
+        "pips": 3,
+        "rice": 9810
+      }
+    },
+    {
+      "name": "max level gives four bursts with mobile dash taps",
+      "passed": true,
+      "state": {
+        "charges": 0,
+        "cooldown": 2.1750000000000016,
+        "dashing": 0,
+        "pips": 4,
+        "rice": 9615
+      }
+    },
+    {
+      "name": "fresh run resets upgraded capacity to one",
+      "passed": true,
+      "state": {
+        "charges": 0,
+        "cooldown": 2.183333333333335,
+        "dashing": 0,
+        "pips": 1,
+        "rice": 10000
+      }
+    }
+  ],
+  "method": "Real game shop buttons, keyboard and touch inputs, 120Hz; currency and empty track fixtures isolate charge accounting."
+}

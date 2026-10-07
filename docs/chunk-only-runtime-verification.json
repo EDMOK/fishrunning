@@ -1,0 +1,42 @@
+{
+  "loaded": {
+    "chunks": 3597,
+    "entities": 2,
+    "pickups": 9
+  },
+  "coverage": {
+    "kinds": [
+      "crystals",
+      "patrol",
+      "mine",
+      "drone",
+      "turret",
+      "gate",
+      "sentry",
+      "platform:cloud",
+      "cargo",
+      "spring",
+      "buoy",
+      "trap:pulse",
+      "trap:cable",
+      "trap:scout",
+      "platform:collapse"
+    ],
+    "practiceChunks": 15
+  },
+  "run": {
+    "t": 194.99166666665366,
+    "segments": 48,
+    "allFrozen": true,
+    "events": 7,
+    "practice": null
+  },
+  "missingLibrary": {
+    "message": "预制赛道库未加载，请检查 src/chunks-data.js 与 src/chunks.js。",
+    "state": "title",
+    "entities": 0,
+    "oldGenerators": false
+  },
+  "errors": [],
+  "missing": []
+}

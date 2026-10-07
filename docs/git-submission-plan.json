@@ -1,0 +1,119 @@
+{
+  "date": "2026-10-07",
+  "action": "commit required groups only; preserve optional archive and excluded changes; no push",
+  "groups": [
+    {
+      "title": "feat: migrate track generation to curated prefab chunks",
+      "paths": [
+        "index.html",
+        "src/art-direction.css",
+        "src/game.js",
+        "src/memes.js",
+        "src/obstacle-specials.js",
+        "src/chunks-data.js",
+        "src/chunks.js",
+        "src/chunk-director.js",
+        "src/run-segments.js",
+        "src/route-patterns.js",
+        "src/base-patterns.js",
+        "src/action-routes.js",
+        "src/reward-shapes.js",
+        "assets/obstacle/new/patrol_scout_frames.png",
+        "assets/obstacle/new/pulse_firewall_frames.png",
+        "assets/obstacle/new/swing_cable_frames.png",
+        "assets/platform/collapse_data_frames.png"
+      ],
+      "required": true
+    },
+    {
+      "title": "test: add chunk curation and engine replay evidence",
+      "paths": [
+        "README.md",
+        "tools/build_chunks.cjs",
+        "tools/lib/authored-chunks.cjs",
+        "tools/lib/handcrafted-chunks.cjs",
+        "tools/lib/chunk-audit.cjs",
+        "tools/lib/chunk-solver.cjs",
+        "tools/lib/chunk-engine-certificates.cjs",
+        "tools/cache_chunk_playthrough.cjs",
+        "tools/report_chunk_certificates.cjs",
+        "tools/verify_chunks.cjs",
+        "tools/verify_chunk_runtime.cjs",
+        "tools/verify_chunk_only_runtime.cjs",
+        "tools/verify_chunk_playthrough.cjs",
+        "tools/audit_chunk_design.cjs",
+        "tools/inspect_chunk.cjs",
+        "tools/measure_variety.cjs",
+        "tools/probe_chunk_sequence.cjs",
+        "tools/verify_special_obstacles_browser.cjs",
+        "docs/chunk-library.json",
+        "docs/chunk-engine-certificates.json",
+        "docs/chunk-playthrough-verification.json",
+        "docs/chunk-verification.json",
+        "docs/chunk-only-runtime-verification.json",
+        "docs/chunk-design-audit.json",
+        "docs/handcrafted-chunks.json",
+        "docs/crafted-chunks-gameplay.png",
+        "docs/crafted-chunks-menu.png",
+        "docs/plans/2026-10-07-chunk-library.md",
+        "docs/plans/2026-10-07-chunk-only-runtime.md",
+        "docs/plans/2026-10-07-crafted-chunks.md",
+        "docs/git-submission-plan.md",
+        "docs/git-submission-plan.json",
+        "tools/verify_title_links.cjs",
+        "docs/mobile-title-links-verification.json",
+        "docs/mobile-title-links.png",
+        "tools/update_chunk_rewards.cjs",
+        "docs/scattered-rice-gameplay.png",
+        "tools/verify_dash_charges.cjs",
+        "docs/dash-charges-verification.json",
+        "docs/mobile-controls-verification.json"
+      ],
+      "required": true
+    },
+    {
+      "title": "chore: guard dist cleanup and ignore local balance logs",
+      "paths": [
+        ".gitignore",
+        "tools/make_dist.py"
+      ],
+      "required": true
+    },
+    {
+      "title": "docs: archive dynamic hazard artwork and design experiments",
+      "paths": [
+        "assets/obstacle/new/dynamic_hazards_sheet.png",
+        "assets/obstacle/new/patrol_scout.png",
+        "assets/obstacle/new/pulse_firewall.png",
+        "assets/obstacle/new/swing_cable.png",
+        "assets/platform/collapse_data.png",
+        "dynamic-hazards-demo.html",
+        "docs/plans/2026-10-06-combination-difficulty.md",
+        "docs/plans/2026-10-06-multi-height-routes-and-ai-events.md",
+        "docs/plans/2026-10-06-run-feel-and-dynamic-hazards.md",
+        "docs/plans/2026-10-06-unified-segment-contract.md"
+      ],
+      "required": false
+    }
+  ],
+  "exclude": {
+    "tools/implement_action_routes.py": "一次性文本替换脚本，面向已移除的旧入口；重跑可能破坏当前代码。",
+    "tools/lib/combo-patterns.cjs": "旧组合编排器，当前构建器与运行时均未引用。",
+    "tools/verify_action_routes.cjs": "验证旧 DSActionRoutes 配方，未验证当前 chunks。",
+    "tools/verify_action_routes_browser.cjs": "仍用旧组合 ID 调用新练习入口，当前不兼容。",
+    "tools/verify_dynamic_hazards_browser.cjs": "仍断言旧速度来源规则，与当前 chunk 锁速和连接跑道规则不一致；当前机关覆盖由新的运行时检查提供。",
+    "tools/verify_balance.py": "本次增量仍审计旧 PATTERNS 和旧间距公式，未覆盖新冻结块；保留工作区改动，待历史工具归档或迁移后单独提交。",
+    "tools/verify_routes.cjs": "本次增量主要加载旧路线、奖励形状与动作路线；待历史工具归档或迁移后单独提交。",
+    "docs/action-route-verification.json": "旧动作路线报告，不能作为当前版本验收证据。",
+    "docs/route-generation-verification.json": "改动来自旧运行时生成器的布局统计，当前版本已替换。",
+    "docs/special-obstacles-verification.json": "旧速度阶段生成的快照；如需更新应重新运行当前版本对应测试。",
+    "docs/experience-gameplay.png": "已有体验截图的重新生成版本，没有本次对应报告更新。",
+    "docs/experience-mobile.png": "已有体验截图的重新生成版本，没有本次对应报告更新。",
+    "docs/experience-summary.png": "已有体验截图的重新生成版本，没有本次对应报告更新。",
+    "docs/special-obstacles-city.png": "旧机关验收截图更新，暂不与当前 chunks 验收混在一起。",
+    "docs/special-obstacles-sunset.png": "旧机关验收截图更新，暂不与当前 chunks 验收混在一起。",
+    "verify-balance.out": "本地控制台日志；已加入 .gitignore。",
+    "dist/": "本地发行构建，可重建；已有 .gitignore。",
+    "dist.zip": "本地发行压缩包，可重建；已有 .gitignore。"
+  }
+}
