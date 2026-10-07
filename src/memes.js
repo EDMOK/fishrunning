@@ -328,6 +328,56 @@
       kind: 'timed', dur: 7,
       eval: { speedMul: 1.18, scoreMul: 1.3 },
       src: '模型服务预热与吞吐提升是公开常见的运行现象；本条为游戏化节奏事件'
+    },
+    {
+      id: 'quota-shrink',
+      title: '套餐额度重新解释',
+      who: 'qwen',
+      text: '宣传页还是原来的宣传页，剩余额度却突然变短了。跑慢一点，先把能拿的白饭拿走。',
+      group: 'mood', cue: '额度缩水 · 收益下降 · 路线放宽',
+      kind: 'timed', dur: 8,
+      eval: { speedMul: 0.9, scoreMul: 0.72, riceMul: 0.78, gapMul: 1.12 },
+      src: 'OpenCode Go 套餐额度变化的社区讨论；本条为讽刺性游戏演绎，不断言具体运营事实'
+    },
+    {
+      id: 'quality-regression',
+      title: '模型突然学会了降智',
+      who: 'gemini',
+      text: '回答变短了，思路也变直了。二段跳与滑翔窗口缩短，别把高光路线当成必选项。',
+      group: 'mood', cue: '模型降智 · 二段跳与滑翔受限',
+      kind: 'timed', dur: 7,
+      eval: { scoreMul: 0.68, riceMul: 0.82, jumpMul: 0.9, glideMul: 0.72, gapMul: 1.15 },
+      src: '社区对模型能力回退的泛化吐槽；本条为讽刺性游戏演绎，不指向未经证实的具体事件'
+    },
+    {
+      id: 'premium-fallback',
+      title: '高级模型路由到经济档',
+      who: 'gpt',
+      text: '账单仍按高级档计算，回答却绕路去了便宜节点。速度下降，前方暂时留出更多反应时间。',
+      group: 'mood', cue: '路由降档 · 速度下降 · 间距增加',
+      kind: 'timed', dur: 8,
+      eval: { speedMul: 0.76, scoreMul: 0.7, gapMul: 1.3 },
+      src: '模型路由与降级服务是公开常见的系统机制；本条为讽刺性游戏演绎'
+    },
+    {
+      id: 'proxy-mask',
+      title: '中转站换上 Claude / GPT 的面具',
+      who: 'claude',
+      text: '名字写得很高级，跑近才发现是另一条路线。看准巡航验证条，滑铲通过。',
+      group: 'hazard', cue: '伪装路由 · 移动验证条',
+      kind: 'instant',
+      eval: { challenge: 'sweep' },
+      src: 'AI 中转服务的模型标注与实际路由存在信息不对称风险；本条为虚构讽刺事件，不指控具体平台'
+    },
+    {
+      id: 'silent-downgrade',
+      title: '默认档位悄悄下调',
+      who: 'deepseek',
+      text: '没有公告，没有弹窗，只是输出变得更像自动补全。白饭少一点，但跑道会暂时变宽。',
+      group: 'mood', cue: '默认降档 · 收益下降 · 障碍变稀',
+      kind: 'timed', dur: 6,
+      eval: { scoreMul: 0.62, riceMul: 0.75, gapMul: 1.22 },
+      src: '在线服务默认路由与模型降级是公开常见的产品机制；本条为虚构讽刺事件'
     }
   ];
 

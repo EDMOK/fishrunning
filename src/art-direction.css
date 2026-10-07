@@ -775,3 +775,13 @@ body{color:var(--ink)}
 #routeProgress .routeHead{margin-bottom:5px}
 #cardOver .stat{box-sizing:border-box;min-height:44px;padding:6px 12px}
 #cardOver .overContent{padding:18px 34px 20px}
+.practiceRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0 0}
+.practiceRow select{min-height:40px;max-width:180px;border:2px solid #9cc4de;border-radius:8px;background:#f3f9fd;color:#315875;padding:4px 10px;font:600 13px inherit}
+#cardTitle #btnPractice{min-height:40px;padding:0 14px;font-size:13px}
+#actionSummary{color:#b46c32;font-weight:700}
+@media(pointer:coarse){.practiceRow select{min-height:54px;font-size:17px;max-width:240px}#cardTitle #btnPractice{min-height:54px;font-size:17px}}
+
+/* Touch targets are measured after the game stage is scaled to the phone. */
+@media (hover:none) and (pointer:coarse){
+  #cardTitle .socialRow .socialLink{min-height:max(82px,calc(48px / var(--stage-scale,1)))}
+}

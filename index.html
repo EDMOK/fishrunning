@@ -244,6 +244,7 @@
             <button class="bigbtn ghost socialLink" id="btnQQ" type="button" title="复制 QQ 群号 1041665197"><img src="docs/qq-group-icon.svg" alt="">QQ群</button>
           </div>
         </div>
+        <div class="practiceRow"><select id="practiceRoute" aria-label="练习赛道"></select><select id="practicePace" aria-label="练习难度"><option value="480">入门</option><option value="760" selected>进阶</option><option value="1000">极限</option></select><button class="bigbtn ghost" id="btnPractice" type="button">组合练习</button></div>
         <div class="start">漂亮过关积攒高光 · 连续突破，触发 8 秒鲸跃时刻</div>
 
         <div class="keybar">
@@ -298,6 +299,7 @@
             <button class="legbtn primary" id="btnAgain"><img data-asset="ui/icon_restart" alt="">再跑一次</button>
             <button class="legbtn" id="btnHome"><img data-asset="ui/icon_home" alt="">回到标题</button>
           </div>
+          <div id="actionSummary" class="overHint"></div>
           <div class="overHint">按 空格 / Enter 立即重跑</div>
           <div class="mobileHelp" style="margin-top:10px">点按屏幕立即重跑</div>
         </div>
@@ -341,7 +343,10 @@
 <script src="src/coast.js"></script>
 <script src="src/obstacle-specials.js"></script>
 <script src="src/experience.js"></script>
-<script src="src/route-patterns.js"></script>
+<script src="src/run-segments.js"></script>
+<script src="src/chunks-data.js"></script>
+<script src="src/chunks.js"></script>
+<script src="src/chunk-director.js"></script>
 <script src="src/game.js"></script>
 </body>
 </html>

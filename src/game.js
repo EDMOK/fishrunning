@@ -13,6 +13,19 @@
   // Slow opening and a long ramp: the run reaches full speed only after a while,
   // so a session starts as a readable rhythm rather than a reaction test.
   var BASE_SPEED = 320, MAX_SPEED = 665, RAMP_DIST = 15000;
+  // A late run should feel like a new phase, not just a longer copy of the
+  // opening. These multipliers ease in over a short window at the existing
+  // progression gates; the safety gap still reads the resulting live speed.
+  var SPEED_PHASES = [
+    { at: 0, mul: 1.00 },
+    { at: 40, mul: 1.08 },
+    { at: 85, mul: 1.18 },
+    { at: 150, mul: 1.30 },
+    { at: 220, mul: 1.42 },
+    { at: 300, mul: 1.55 }
+  ];
+  var SPEED_PHASE_BLEND = 4.0;
+  var TIER_TIME = [0, 15, 40, 85, 150];
   var GRAVITY = 2200;
   // Sized so the tallest obstacle (147px) clears with margin to spare at the
   // slowest speed it appears at. tools/verify_balance.py proves it.
@@ -61,7 +74,7 @@
   var VIEW_W = VW / ZOOM;                    // world units visible across
 
   var COMBO_TIME = 3.4;
-  var INVULN = 2.2;
+  var INVULN = 1.1;
   var START_LIVES = 3;
 
   // Collection reach. A pickup is taken when the circle around the runner's
@@ -106,7 +119,7 @@
   var BREAKABLE = { patrol: 1, crystals: 1, mine: 1, drone: 1, turret: 1, cargo: 1 };
   var Specials=window.DSObstacleSpecials;
   function breakable(o) {
-    return !o.bob && !o.eventHazard && !!BREAKABLE[o.kind];
+    return !o.rigid && !o.bob && !o.eventHazard && !!BREAKABLE[o.kind];
   }
 
   var POWERS = ['chip', 'shield', 'magnet', 'overclock'];
@@ -365,8 +378,9 @@
     TIMED_POWERS.forEach(function (k) {
       if (player.power[k] > 0) player.power[k] = POWER_INFO[k].dur * pm;
     });
-    player.shield = true;
-    popText(camX + PLAYER_X, player.y - 180, '道具全部续期', '#8ff3ff', 30);
+    // The firewall is a one-hit resource, not a timer. Refreshing active
+    // durations must not recreate a shield the player already spent.
+    popText(camX + PLAYER_X, player.y - 180, '计时道具续期', '#8ff3ff', 30);
   }
 
   function shufflePowers() {
@@ -382,14 +396,10 @@
     }
   }
 
-  /** A breather burst of rice, dropped in an arc just ahead of the player. */
+  /** Events request an authored chunk at a future boundary. */
   function riceRain(n) {
-    var x0 = camX + PLAYER_X + 180;
-    for (var i = 0; i < n; i++) {
-      var x = x0 + i * 74 + rand(-16, 16);
-      addRice(x, GROUND_Y - rand(70, 300));
-    }
-    popText(camX + PLAYER_X, player.y - 200, '白饭雨!', '#ffd166', 34);
+    requestChunkEvent('rice', 180);
+    popText(camX + PLAYER_X, player.y - 200, '前方白饭奖励段!', '#ffd166', 34);
   }
 
   /** "Weights are out": every obstacle on screen turns into something edible. */
@@ -411,66 +421,21 @@
     if (n) GameAudio.sfx('combo', 4);
   }
 
-  /**
-   * A gate the player has to clear — dropped in at a fixed distance ahead.
-   *
-   * The wall is spawned outside the pattern loop, so unlike generated patterns it
-   * is NOT covered by auditPattern(). Landing it on top of an existing obstacle
-   * would make an unclearable cluster with no warning in the console, so it
-   * walks forward until it finds a genuinely empty slot instead. CLEAR_EITHER_SIDE
-   * is the room a full jump needs on each side, which keeps the wall inside one
-   * arc no matter what it landed next to.
-   */
-  var CLEAR_EITHER_SIDE = 320;
-
-  function safeHazardSlot(ahead, width) {
-    // Generated content can reach several screens ahead. Never put an event
-    // obstacle into an already generated beat or into the next beat's landing zone.
-    var at = Math.max(camX + PLAYER_X + ahead, gen.x + CLEAR_EITHER_SIDE);
-    for (var guard = 0; guard < 40; guard++) {
-      var clash = false;
-      for (var i = 0; i < obstacles.length; i++) {
-        var o = obstacles[i];
-        if (!o.dead && o.x + o.w > at - CLEAR_EITHER_SIDE &&
-            o.x < at + width + CLEAR_EITHER_SIDE) { clash = true; at = o.x + o.w + CLEAR_EITHER_SIDE; break; }
-      }
-      if (!clash) return at;
-    }
-    return null;
+  // Event geometry is always replayed from the same frozen library.
+  function requestChunkEvent(kind, ahead) {
+    if (pendingChunkEvents.length >= 6) return;
+    pendingChunkEvents.push({kind:kind, earliest:camX + PLAYER_X + (ahead || 0)});
   }
-
   function queueWall(ahead) {
-    var at = safeHazardSlot(ahead, 92);
-    if (at === null) return;
-    var start = obstacles.length;
-    // The event can fire before tall sentries are jumpable at the current speed.
-    var kind = tier() >= 3 ? 'sentry' : 'crystals';
-    addObstacle(kind, at, { eventHazard: true });
-    auditPattern('event-wall', start, obstacles.length, tier());
-    gen.x = Math.max(gen.x, at + 92 + gapFor(tier()));
-    addRiceArc(at - 60, GROUND_Y - 210, 5, 44);
+    requestChunkEvent('wall', ahead || 1150);
     popText(camX + PLAYER_X, player.y - 210, '前方设卡', '#ff9ad2', 32);
     GameAudio.sfx('power');
   }
-
   function queueChallenge(kind) {
-    var doubleBar = kind === 'doublecheck';
-    var sweep = kind === 'sweep';
-    if (kind !== 'captcha' && !doubleBar && !sweep && kind !== 'cacheflush') return;
-    var width = doubleBar ? 700 : 220;
-    var at = safeHazardSlot(1150, width);
-    if (at === null) return;
-    if (kind === 'cacheflush') {
-      addObstacle('mine', at, { motion: 32, eventHazard: true });
-      addRiceArc(at - 60, GROUND_Y - 170, 5, 48);
-    } else {
-      addObstacle('drone', at, { float: 142, bob: 6, motion: sweep ? 78 : 0, eventHazard: true });
-      if (doubleBar) addObstacle('drone', at + 540, { float: 142, bob: 6, eventHazard: true });
-      addRiceLine(at - 60, GROUND_Y - 56, doubleBar ? 14 : 6, 48);
-    }
-    gen.x = Math.max(gen.x, at + width + gapFor(tier()));
+    if (['captcha','doublecheck','sweep','cacheflush'].indexOf(kind)<0) return;
+    requestChunkEvent(kind, 1150);
     popText(camX + PLAYER_X, player.y - 210,
-      kind === 'cacheflush' ? '前方缓存风暴' : doubleBar ? '连续滑动验证' : sweep ? '巡航验证条' : '前方滑动验证', '#ff9ad2', 28);
+      kind === 'cacheflush' ? '前方缓存风暴' : kind === 'doublecheck' ? '连续滑动验证' : kind === 'sweep' ? '巡航验证条' : '前方滑动验证', '#ff9ad2', 28);
   }
 
   function openDiscountShop() {
@@ -575,6 +540,7 @@
   }
 
   function fireEvent() {
+    if(practice||activeAction)return false;
     if(Coast && Math.abs(runElapsed-Coast.scene.startTime)<10)return false;
     // Never overwrite a running modifier or its expiry handle with the next event.
     if (eventDef && eventT > 0) return false;
@@ -671,13 +637,14 @@
     if (game.state !== 'shop') return;
     var price = shopCost(skill);
     if (price === null || game.rice < price) return;
+    var previousDashMax = dashMax();
     game.rice -= price;
     skillLevels[skill.id] = (skillLevels[skill.id] || 0) + 1;
     // A skill whose value cannot be expressed as a lasting multiplier (an extra
     // life) pays out through the same instant-tag path the events use, so there
     // is exactly one implementation of "grant a life".
     if (skill.onBuy) fireInstantTag(skill.onBuy.tag, skill.onBuy.v);
-    topUpCharges();
+    grantAddedDashCharges(previousDashMax);
     GameAudio.sfx('card');
     updateHud();
     renderShop();
@@ -824,15 +791,13 @@
   function dashMax() { return 1 + Math.round(addOf('dashAdd')); }
   function glideMax() { return GLIDE_MAX * mulOf('glideMul'); }
 
-  /**
-   * Hand over any charge the cap has grown by, once the regrow timer is idle.
-   *
-   * Called from update() AND from buySkill(): the shop freezes update(), so a
-   * purchase that only topped up on the next simulation step would show the
-   * charge it just sold as spent for as long as the player stays in the shop.
-   */
-  function topUpCharges() {
-    if (player.dashCd === 0 && player.charges < dashMax()) player.charges = dashMax();
+  /** A purchase grants new capacity once; it never replaces spent charges. */
+  function grantAddedDashCharges(previousMax) {
+    var added = dashMax() - previousMax;
+    // A running cooldown still owns recovery, including capacity bought in it.
+    if (added > 0 && player.dashCd === 0) {
+      player.charges = Math.min(dashMax(), player.charges + added);
+    }
   }
 
   function tryDash() {
@@ -982,7 +947,7 @@
   // PNG path, painted ones become data URLs so the same `<img src>` works.
   var powerIconURL = {};
 
-  var ASSET_VERSION = '20261001-specials1';
+  var ASSET_VERSION = '20261006-dynamic6';
 
   /**
    * The single place an asset URL is built. The preloader and every later
@@ -1060,8 +1025,9 @@
     'bg/zones/market': ['sky', 'far', 'mid', 'ground'],
     'bg/zones/vault': ['sky', 'far', 'mid', 'ground'],
     'bg/zones/wall': ['sky', 'far', 'mid', 'ground'],
-    'obstacle/new': ['patrol', 'crystals', 'mine', 'drone', 'turret', 'gate', 'sentry', 'cargo', 'spring', 'buoy'],
-    platform: ['surface_cloud', 'surface_glass', 'cloud_island'],
+    'obstacle/new': ['patrol', 'crystals', 'mine', 'drone', 'turret', 'gate', 'sentry', 'cargo', 'spring', 'buoy',
+      'pulse_firewall_frames', 'swing_cable_frames', 'patrol_scout_frames'],
+    platform: ['surface_cloud', 'surface_glass', 'cloud_island', 'collapse_data_frames'],
     coast: ['sky', 'road', 'cone', 'barrier', 'sweeper', 'gull', 'pelican'],
     mascot: ['deepseek', 'qwen', 'zhipu', 'claude', 'gpt', 'gemini']
   };
@@ -1166,8 +1132,8 @@
     cuttable: false,
     jumps: 0, sliding: false, slideT: 0,
     coyote: 0, buffer: 0, wince: 0, cheer: 0, shock: 0,
-    runT: 0, invuln: 0, shield: false,
-    // dash: charges refill one gcd at a time; grace keeps the frame the dash
+    runT: 0, invuln: 0, shield: false, softLock: 0,
+    // dash: a finite charge wallet refills after its final charge cools down; grace keeps the frame the dash
     // ends from turning the obstacle it was about to break into a hit.
     dashT: 0, dashCd: 0, dashGrace: 0, charges: 1,
     // glide / stomp
@@ -1224,8 +1190,95 @@
   // ------------------------------------------------------------------- world
   var camX = 0, speed = BASE_SPEED, dist = 0, worldT = 0;
   var obstacles = [], pickups = [], powerups = [], platforms = [], trackGaps = [];
+  var actionBlocks = [], activeAction = null;
+  var pendingChunkEvents = [];
+  // Every generated beat — pattern or action phrase — owns a locked run speed
+  // and a clear recovery runway. Both are recorded so the runtime can enforce
+  // them and the verifiers can assert them.
+  var patternSegments = [], activePattern = null, runways = [], segmentX = 0;
+  var speedSource = 'natural', speedEase = 0, speedNatural = BASE_SPEED;
+  // Introspection of chunk pacing; the chunk director owns rest decisions.
+  var restStreak = 0;
+  var generatedSegments = [];
+  var actionStats = {clears:0,failed:0,streak:0,best:0,lastFailure:''};
+  var practice = null;
+  // Runtime has one geometry source: the frozen chunk library.
+  // add* functions remain the entity loaders used by DSChunks.replay.
+  var Chunks = (window.DSChunks && window.DSChunksData)
+    ? window.DSChunks.create(window.DSChunksData, {
+        gap:addTrackGap, platform:addPlatform, addObstacle:addObstacle,
+        rice:addRice, riskLine:addRiskLine, hint:hint
+      })
+    : null;
+  var chunkTemplates = [];
+  if (Chunks) Chunks.patterns.forEach(function(p) {
+    if (!p.event && !chunkTemplates.some(function(t){return t.id===p.id;}))
+      chunkTemplates.push({id:p.id,name:p.name,min:p.min,handcrafted:p.handcrafted});
+  });
+
+  function actionAt(x) {
+    for(var i=0;i<actionBlocks.length;i++) {
+      var b=actionBlocks[i];
+      if(!b.done&&x>=b.start&&x<b.end)return b;
+    }
+    return null;
+  }
+  function patternAt(x) {
+    for(var i=0;i<patternSegments.length;i++) {
+      var s=patternSegments[i];
+      if(x>=s.start&&x<s.end)return s;
+    }
+    return null;
+  }
+  function runwayAt(x) {
+    for(var i=0;i<runways.length;i++) {
+      var r=runways[i];
+      if(x>=r.from&&x<r.to)return r;
+    }
+    return null;
+  }
+  function updateActionBlocks() {
+    var x=camX+PLAYER_X;
+    activeAction=actionAt(x);
+    if(activeAction&&!activeAction.entered) {
+      activeAction.entered=true;
+      popText(x+220,GROUND_Y-275,activeAction.name+(activeAction.cue?' · '+activeAction.cue:''),'#347eb3',23);
+    }
+    actionBlocks.forEach(function(b){
+      if(b.done||x<b.end)return;
+      b.done=true;
+      if(b.entities.some(function(o){return o.failed&&!o.dead;})){b.failed=true;}
+      if(b.failed){actionStats.failed++;actionStats.streak=0;actionStats.lastFailure=b.name;}
+      else {
+        actionStats.clears++;actionStats.streak++;actionStats.best=Math.max(actionStats.best,actionStats.streak);
+        var points=(100+b.entities.length*15)*Math.min(3,1+actionStats.streak*.2);
+        game.score+=points*scoreMul();
+        popText(x+50,GROUND_Y-235,'整段突破 +'+Math.round(points),'#dfa943',26);
+        if(practice)practice.clears++;
+      }
+    });
+    while(actionBlocks.length&&actionBlocks[0].done&&actionBlocks[0].end<x-900)actionBlocks.shift();
+  }
+  function startPractice(id,atSpeed) {
+    if (!Chunks) return false;
+    var p=Chunks.byId(id)||Chunks.byBase(id, Number(atSpeed)||650);
+    if (!p) return false;
+    startRun({id:p.id,chunkId:p.chunkId,speed:p.speed,clears:0});
+    return true;
+  }
   var platformSprite = null;
-  var shots = [], recentPatterns = [], recentObstacleKinds = [], pickupBag = [];
+  var ANIM_FRAMES = 6;
+  // Generated sheets keep a small safety gutter between frames. Crop that gutter
+  // into transparent padding so a neighboring frame can never leak into a sprite.
+  var ANIM_PAD = { pulse: .10, cable: .24, scout: .10, collapse: .08 };
+  var animatedSheets = {};
+  var ANIM_KEYS = {
+    pulse: 'obstacle/new/pulse_firewall_frames',
+    cable: 'obstacle/new/swing_cable_frames',
+    scout: 'obstacle/new/patrol_scout_frames',
+    collapse: 'platform/collapse_data_frames'
+  };
+  var shots = [], recentPatterns = [], recentChunks = [], pickupBag = [];
   function shuffled(list) {
     var out = list.slice();
     for (var i = out.length - 1; i > 0; i--) {
@@ -1233,22 +1286,51 @@
     }
     return out;
   }
-  function variedObstacle(list) {
-    var choices = list.filter(function (k) { return recentObstacleKinds.indexOf(k) < 0; });
-    var k = pick(choices.length ? choices : list);
-    recentObstacleKinds.push(k);
-    if (recentObstacleKinds.length > 2) recentObstacleKinds.shift();
-    return k;
+  function animFrame(key, frame) {
+    var sheet = IMG[ANIM_KEYS[key]];
+    if (!sheet) return null;
+    var frames = animatedSheets[key];
+    if (!frames) {
+      frames = animatedSheets[key] = [];
+      var sw = sheet.naturalWidth || sheet.width;
+      var sh = sheet.naturalHeight || sheet.height;
+      var fw = sw / ANIM_FRAMES;
+      var pad = Math.max(2, Math.round(fw * (ANIM_PAD[key] || .04)));
+      var innerW = fw - pad * 2;
+      for (var i = 0; i < ANIM_FRAMES; i++) {
+        var c = document.createElement('canvas');
+        c.width = fw; c.height = sh;
+        c.getContext('2d').drawImage(sheet, i * fw + pad, 0, innerW, sh, pad, 0, innerW, sh);
+        frames.push(c);
+      }
+    }
+    return frames[Math.max(0, Math.min(ANIM_FRAMES - 1, frame | 0))];
+  }
+  function hazardFrame(o) {
+    var key = o.trap === 'pulse' ? 'pulse' : o.trap === 'cable' ? 'cable' : o.trap === 'scout' ? 'scout' : null;
+    if (!key || !o.trapCycle) return null;
+    var frame = Math.floor(((o.trapT || 0) / o.trapCycle % 1) * ANIM_FRAMES);
+    return animFrame(key, frame);
+  }
+  function collapseFrame(p) {
+    if (p.collapseT === null) return null;
+    var frame = Math.max(0, Math.min(ANIM_FRAMES - 1,
+      Math.floor(platformCollapse(p) * (ANIM_FRAMES - 1))));
+    return animFrame('collapse', frame);
   }
   function obstaclePose(o) {
+    if(o.fixed)return {x:o.x,y:o.y,dx:0,dy:0};
+    var specialPose = Specials.pose(o, worldT);
+    if (specialPose) {
+      return { x: o.x + specialPose.dx, y: o.y + specialPose.dy,
+        dx: specialPose.dx, dy: specialPose.dy };
+    }
     var t = worldT * 2.2 + o.phase, dx = 0, dy = 0;
     if (o.kind === 'patrol') { dx = Math.sin(t) * 22; dy = -Math.abs(Math.sin(t * 2)) * 5; }
     if (o.kind === 'mine') { dx = Math.sin(t * .65) * 24; dy = -14 - Math.sin(t) * 12; }
     if (o.kind === 'drone') { dx = Math.sin(t * .8) * 34; dy = Math.sin(t) * (o.bob || 16); }
     if (o.kind === 'sentry') dx = Math.sin(t * .7) * 14;
     if (o.kind === 'turret' && o.recoil > 0) dx = o.recoil * 35;
-    var specialPose=Specials.pose(o,worldT);
-    if(specialPose){dx=specialPose.dx;dy=specialPose.dy;}
     if (o.motion) dx = Math.sin(t * 1.15) * o.motion;
     return { x: o.x + dx, y: o.y + dy, dx: dx, dy: dy };
   }
@@ -1300,6 +1382,22 @@
     return BASE_SPEED + (MAX_SPEED - BASE_SPEED) * (1 - Math.exp(-d / RAMP_DIST));
   }
 
+  function speedPhaseMultiplier(t) {
+    var target = SPEED_PHASES[0].mul;
+    for (var i = 1; i < SPEED_PHASES.length; i++) {
+      var phase = SPEED_PHASES[i];
+      if (t < phase.at) break;
+      var prev = SPEED_PHASES[i - 1];
+      var blend = clamp((t - phase.at) / SPEED_PHASE_BLEND, 0, 1);
+      target = prev.mul + (phase.mul - prev.mul) * blend;
+    }
+    return target;
+  }
+
+  function speedAtRun(d, t) {
+    return speedAt(d) * speedPhaseMultiplier(t);
+  }
+
   /** Jump height stays constant as the run speeds up; only the arc length grows. */
   function jumpK() { return Math.sqrt(speed / BASE_SPEED); }
 
@@ -1312,7 +1410,7 @@
     var o = {
       kind: kind, cfg: cfg, img: img, w: w, h: h,
       x: x, y: floatY - h, bob: opts.bob || 0, motion: opts.motion || 0,
-      phase: rand(0, 6.28),
+      phase: opts.phase === undefined ? rand(0, 6.28) : opts.phase,
       eventHazard: !!opts.eventHazard, nearMiss: false
     };
     Specials.init(o,opts);
@@ -1341,19 +1439,7 @@
     return pickup;
   }
 
-  function addRiceArc(x, y, n, dx, kind) {
-    kind = kind || 'rice';
-    for (var i = 0; i < n; i++) {
-      var t = n === 1 ? 0.5 : i / (n - 1);
-      addRice(x + i * dx, y - Math.sin(t * Math.PI) * (dx * 0.55 + 26), kind);
-    }
-  }
-
-  function addRiceLine(x, y, n, dx, kind) {
-    for (var i = 0; i < n; i++) addRice(x + i * dx, y, kind || 'rice');
-  }
-
-  var riskLineId = 0, riskLines = {};
+  var riskLines = {}, riskLineId = 0;
   function addRiskLine(x, y, n, dx) {
     var id = ++riskLineId;
     riskLines[id] = { remaining: n, intact: true };
@@ -1367,10 +1453,21 @@
     powerups.push({ kind: kind, img: img, x: x, y: y, r: 40, phase: rand(0, 6.28), got: 0 });
   }
 
-  function addPlatform(x, y, w) {
-    var p = { x: x, y: y + rand(-10, 10), w: w - rand(0, 14), h: 28 };
+  function addPlatform(x, y, w, opts) {
+    opts = opts || {};
+    var p = { x: x, y: opts.exact ? y : y + rand(-10, 10), w: opts.exact ? w : w - rand(0, 14), h: 28,
+      collapseDelay: opts.collapse ? (opts.collapseDelay || 0.72) : 0,
+      collapseT: null };
     platforms.push(p);
     return p;
+  }
+
+  function platformAt(x, y) {
+    for (var i = 0; i < platforms.length; i++) {
+      var p = platforms[i];
+      if (Math.abs(p.y - y) < 1.5 && x >= p.x - 20 && x <= p.x + p.w + 20) return p;
+    }
+    return null;
   }
 
   function addTrackGap(x, w) {
@@ -1391,6 +1488,7 @@
   function hasTrackSupportAt(x, y) {
     for (var i = 0; i < platforms.length; i++) {
       var p = platforms[i];
+      if (p.collapseT !== null && p.collapseT >= p.collapseDelay) continue;
       if (Math.abs(p.y - y) < 1.5 && x >= p.x - 20 && x <= p.x + p.w + 20) return true;
       if (p.x > x + 20) break;
     }
@@ -1404,6 +1502,7 @@
     var right = x + PLAYER_BOX_W * 0.46;
     for (var i = 0; i < platforms.length; i++) {
       var p = platforms[i];
+      if (p.collapseT !== null && p.collapseT >= p.collapseDelay) continue;
       if (p.y < fromY || p.y > toY) continue;
       if (right < p.x || left > p.x + p.w) continue;
       if (landing === null || p.y < landing) landing = p.y;
@@ -1419,6 +1518,18 @@
     while (platforms.length && platforms[0].x + platforms[0].w < camX - 900) platforms.shift();
   }
 
+  function updatePlatforms(dt) {
+    platforms.forEach(function (p) {
+      if (p.collapseT !== null) p.collapseT += dt;
+    });
+  }
+
+  function platformCollapse(p) {
+    if (p.collapseT === null) return 0;
+    if (p.collapseT < p.collapseDelay) return p.collapseT / p.collapseDelay;
+    return 1 + Math.min(1, (p.collapseT - p.collapseDelay) / .35);
+  }
+
   function recoverFromGap() {
     var worldX = camX + PLAYER_X;
     var gap = gapAt(worldX);
@@ -1427,7 +1538,7 @@
     var safeX = gap ? gap.x + gap.w + 90 : worldX + 260;
     var skip = Math.max(0, safeX - worldX);
     if (skip > 0) { camX += skip; dist += skip; }
-    damage({ kind: 'gap', box: { h: 0 } });
+    damage({ kind: 'gap', combo:gap&&gap.combo, box: { h: 0 } });
     player.y = GROUND_Y; player.groundY = GROUND_Y;
     player.vy = 0; player.onGround = true; player.jumps = 0;
     player.coyote = 0; player.buffer = 0; player.sliding = false;
@@ -1441,7 +1552,7 @@
   // learned before the speed and the trickier patterns arrive.
   function tier() {
     var distanceTier=dist<2200?0:dist<5200?1:dist<9800?2:dist<17000?3:4;
-    var timeTier=runElapsed<15?0:runElapsed<40?1:runElapsed<85?2:runElapsed<150?3:4;
+    var timeTier=runElapsed<TIER_TIME[1]?0:runElapsed<TIER_TIME[2]?1:runElapsed<TIER_TIME[3]?2:runElapsed<TIER_TIME[4]?3:4;
     return Math.min(distanceTier,timeTier);
   }
 
@@ -1484,7 +1595,9 @@
   var TIER_START = [0, 2200, 5200, 9800, 17000];
   /** Slowest speed at which a pattern with this min tier can appear. */
   function patternFloor(minTier) {
-    return speedAt(TIER_START[Math.min(minTier, 4)]);
+    var gate = Math.min(minTier, 4);
+    var phaseTime = TIER_TIME[gate];
+    return speedAtRun(TIER_START[gate], phaseTime);
   }
 
   // Obstacles closer together than this cannot be split across two jumps: the
@@ -1493,212 +1606,11 @@
   // obstacles, not jump obstacles, and are never part of a jump cluster.
   var CHAIN_GAP = 240;
 
-  function clustersOf(list) {
-    var solid = list.filter(function (o) { return !o.bob; })
-      .sort(function (a, b) { return a.box.x - b.box.x; });
-    var out = [], cur = null;
-    for (var i = 0; i < solid.length; i++) {
-      var o = solid[i];
-      // Sweeping obstacles occupy their whole horizontal travel for the audit.
-      var L = o.box.x - (o.motion || 0), R = o.box.x + o.box.w + (o.motion || 0), H = o.box.h;
-      if (cur && L - cur.r <= CHAIN_GAP) {
-        if (R > cur.r) cur.r = R;
-        if (H > cur.hMax) cur.hMax = H;
-      } else {
-        cur = { l: L, r: R, hMax: H };
-        out.push(cur);
-      }
-    }
-    return out;
-  }
-
   var levelAudit = [];
-  // How often each pattern has been built, keyed by the pattern's id. Read by the
-  // DSGame introspection hook: a beat that never gets picked would otherwise be
-  // indistinguishable from one the player simply never reached.
   var patternCounts = {};
 
-  function auditPattern(p, from, to, atTier) {
-    var fresh = obstacles.slice(from, to);
-    var clusters = clustersOf(fresh);
-    var speedHere = patternFloor(atTier);
-    for (var i = 0; i < clusters.length; i++) {
-      var c = clusters[i];
-      var span = c.r - c.l;                       // hitbox bounds, not art bounds
-      var budget = clearSpan(c.hMax, speedHere);
-      if (span > budget) {
-        levelAudit.push({ span: Math.round(span), budget: Math.round(budget), h: Math.round(c.hMax), tier: atTier });
-        if (levelAudit.length <= 10) {
-          console.warn('[level] un-clearable cluster: span ' + Math.round(span) +
-            ' > budget ' + Math.round(budget) + ' (h=' + Math.round(c.hMax) + ', tier=' + atTier + ')');
-        }
-      }
-    }
-  }
-
-  // Every build() below must stay inside clearSpan(); auditPattern() enforces it
-  // at runtime and shouts in the console if a layout ever becomes un-clearable.
-  //
-  // Density is deliberately back-loaded: the opening tiers fire ONE obstacle per
-  // pattern so a run starts as a rhythm rather than a wall, and the only
-  // three-obstacle beat in the game is held back to the last tier.
-  var PATTERNS = [
-    // one obstacle with a rice arc over it — the bread-and-butter beat
-    { id: 'single', min: 0, build: function (x, t) {
-      var o = addObstacle(variedObstacle(legalAt(t)), x);
-      addRiceArc(x - 40, GROUND_Y - o.h - 46, 5, 46);
-    } },
-
-    // pure reward: a fat arc of rice and no obstacle at all, a free breather
-    { id: 'rice', min: 0, build: function (x) {
-      var n = randInt(4, 7), dx = rand(48, 62);
-      var high = rand(130, 180);
-      if (Math.random() < .5) addRiceArc(x, GROUND_Y - high, n, dx);
-      else for (var j = 0; j < n; j++) addRice(x + j * dx, GROUND_Y - 95 - j * 17);
-    } },
-    { id: 'wave-trail', min: 0, build: function (x) {
-      var n = randInt(6, 9), dx = rand(55, 70);
-      for (var j = 0; j < n; j++) addRice(x + j * dx, GROUND_Y - 100 - Math.sin(j / (n - 1) * Math.PI) * 100);
-    } },
-    { id: 'fork-trail', min: 1, build: function (x) {
-      var o = addObstacle(variedObstacle(['patrol', 'mine', 'crystals']), x + 110);
-      addRiceLine(x - 50, GROUND_Y - 55, 3, 43);
-      addRiceArc(x + 50, GROUND_Y - o.h - 65, randInt(4, 6), 48);
-      addRice(x + 150, GROUND_Y - o.h - 140, 'bigrice');
-    } },
-
-    // A real break in the runway crossed by a row of small, one-way cloud
-    // islands. Their tops use the same walkable y as the landing simulation.
-    { id: 'cloud-bridge', min: 0, build: function (x) {
-      var start = x + 110;
-      var step = Math.sqrt(speed / BASE_SPEED);
-      addTrackGap(start, 980 * step);
-      addPlatform(start - 70 * step, GROUND_Y - 65, 145 * step);
-      addPlatform(start + 205 * step, GROUND_Y - 132, 165 * step);
-      addPlatform(start + 500 * step, GROUND_Y - 83, 155 * step);
-      addPlatform(start + 785 * step, GROUND_Y - 122, 150 * step);
-      addRiceArc(start + 205 * step, GROUND_Y - 205, 4, 52 * step);
-      addRice(start + 570 * step, GROUND_Y - 165);
-      addRiceArc(start + 785 * step, GROUND_Y - 190, 3, 48 * step);
-      hint('gap', start - 360);
-    } },
-
-    // A shorter alternate island route keeps the skyline varied after the
-    // opening while preserving broad, readable landing zones.
-    { id: 'island-hop', min: 1, build: function (x) {
-      var start = x + 125;
-      var step = Math.sqrt(speed / BASE_SPEED);
-      addTrackGap(start, 890 * step);
-      addPlatform(start - 60 * step, GROUND_Y - 60, 150 * step);
-      addPlatform(start + 220 * step, GROUND_Y - 135, 155 * step);
-      addPlatform(start + 515 * step, GROUND_Y - 80, 160 * step);
-      addPlatform(start + 750 * step, GROUND_Y - 130, 150 * step);
-      addRiceArc(start + 220 * step, GROUND_Y - 205, 4, 50 * step);
-      addRiceArc(start + 760 * step, GROUND_Y - 195, 3, 48 * step);
-      hint('gap', start - 360);
-    } },
-
-    // Choice of a safe approach line and a higher-value jump route.
-    { id: 'choice', min: 1, build: function (x) {
-      var o = addObstacle(variedObstacle(TIER1), x + 120);
-      addRiceLine(x - 105, GROUND_Y - 94, 3, 42);
-      addRiskLine(x + 20, GROUND_Y - o.h - 75, 5, 48);
-    } },
-
-    // a tall wall, with a big rice floating over the top of it. Tiers 2+ only:
-    // the pool is the genuinely tall set, which needs the faster arc to clear.
-    { id: 'tall', min: 2, build: function (x, t) {
-      var tall = ['turret'].concat(t >= 3 ? ['gate', 'sentry'] : []);
-      var o = addObstacle(variedObstacle(tall), x);
-      addRice(x + o.w / 2 - 30, GROUND_Y - o.h - 74, 'bigrice');
-      addRiceArc(x - 30, GROUND_Y - o.h - 40, 3, 46);
-    } },
-
-    // floating hazard: the only way through is to slide
-    { id: 'float', min: 2, build: function (x) {
-      addObstacle('drone', x, { float: 142, bob: 6 });
-      addRiceLine(x - 70, GROUND_Y - 56, 3, 46);
-      addRiceLine(x + 160, GROUND_Y - 56, 2, 46);
-    } },
-
-    // The sweeping drone shifts its horizontal timing but keeps the slide lane
-    // open throughout its cycle. A ground mine makes a separate second action.
-    { id: 'sweep-and-hop', min: 2, build: function (x) {
-      addObstacle('drone', x, { float: 142, bob: 6, motion: 78 });
-      addObstacle('mine', x + 680);
-      addRiceLine(x + 200, GROUND_Y - 55, 4, 48);
-    } },
-
-    // A moving ground hazard has a wide but still single-jumpable envelope.
-    { id: 'moving-mine', min: 2, build: function (x) {
-      var o = addObstacle('mine', x, { motion: 38 });
-      addRiceArc(x - 72, GROUND_Y - o.h - 72, 6, 48);
-    } },
-
-    // slide under, then a wall much further along: two separate actions
-    { id: 'slide-then-wall', min: 2, build: function (x) {
-      addObstacle('drone', x, { float: 142, bob: 6 });
-      addObstacle(pick(['crystals', 'mine']), x + 620);
-      addRiceLine(x + 200, GROUND_Y - 150, 4, 48);
-    } },
-
-    // A sliding corridor with two spaced verification bars. The floor line
-    // teaches the safe route; its centre rice is worth a little more.
-    { id: 'slide-corridor', min: 3, build: function (x) {
-      addObstacle('drone', x, { float: 142, bob: 6 });
-      addObstacle('drone', x + 580, { float: 142, bob: 6 });
-      addRiskLine(x + 180, GROUND_Y - 56, 5, 46);
-    } },
-
-    // The tight pair is held back to the final tier.
-    { id: 'pair', min: 4, build: function (x) {
-      addObstacle('patrol', x);
-      addObstacle('patrol', x + 80);
-      addRiceArc(x - 10, GROUND_Y - 185, 6, 44);
-    } },
-
-    // ---- optional verb beats ----------------------------------------------
-    // These remain clearable by jumping alone; the new verbs are optional.
-
-    // Stomp chain: three separated obstacles that reward a bounce plus a
-    // corrective double jump.
-    { id: 'stomp-chain', min: 2, build: function (x) {
-      for (var i = 0; i < 3; i++) {
-        addObstacle('patrol', x + i * 420);
-        addRiceArc(x + i * 420 - 54, GROUND_Y - 150, 3, 44);
-      }
-      hint('stomp', x + 120);
-    } },
-
-    // Glide trail: a long high hammock of rice with nothing under it. Only a
-    // glide holds the altitude for the whole span, and because the beat has no
-    // obstacle there is nothing a long float can overshoot into.
-    { id: 'glide-trail', min: 1, build: function (x) {
-      addRiceArc(x, GROUND_Y - 196, 9, 74);
-      addRiceLine(x + 60, GROUND_Y - 74, 3, 46);
-      hint('glide', x);
-    } },
-
-    // Dash lane: ONE plug with a ribbon of rice threaded through it at shin
-    // height. Jumping the plug means dropping the ribbon; running it means
-    // eating the hit; a dash takes both in one pass. Deliberately a single
-    // obstacle — two of them close enough to share one dash would sit inside
-    // CHAIN_GAP and merge into a cluster no jump arc can span.
-    { id: 'dash-lane', min: 3, build: function (x) {
-      addObstacle('mine', x);
-      addRiskLine(x - 90, GROUND_Y - 46, 5, 74);
-      hint('dash', x + 60);
-    } }
-  ];
-
-  var RouteDirector = window.DSRoutePatterns.create({
-    rand:rand,randInt:randInt,pick:pick,
-    // Reserve enough reach for the strongest existing slowdown event.
-    scale:function(){return Math.sqrt(speedAt(dist)*.7/BASE_SPEED);},
-    addObstacle:addObstacle,addRice:addRice,addRiceArc:addRiceArc,addRiceLine:addRiceLine,
-    addPlatform:addPlatform,addTrackGap:addTrackGap,addRiskLine:addRiskLine,hint:hint
-  });
-  PATTERNS = PATTERNS.concat(RouteDirector.patterns);
+  // The director selects chunks; it has no geometry generation API.
+  var RouteDirector = window.DSChunkDirector.create({rand:rand});
 
   // ---- first-touch hints ----------------------------------------------------
   // A new verb nobody presses does not exist. Each beat that teaches one queues
@@ -1711,7 +1623,10 @@
     gap: '前方跑道断开，连续跳上云岛',
     cargo: '运粮蟹车：跳过避让，冲刺或下砸开箱',
     spring: '鲸尾弹簧：落在顶面借力，侧面撞击会受伤',
-    buoy: '警戒浮标：看清箭头，位置锁定后跳跃或下滑'
+    buoy: '警戒浮标：看清箭头，位置锁定后跳跃或下滑',
+    pulse: '脉冲防火墙：看灯光，关闭时通过',
+    cable: '摆动数据电缆：看轨迹，跳跃或下滑',
+    scout: '巡逻验证无人机：观察高度再选择动作'
   };
 
   function hint(kind, x) { hints.push({ kind: kind, x: x }); }
@@ -1738,38 +1653,56 @@
    * time roughly constant instead keeps the game readable at every speed.
    */
   function gapFor(t) {
-    // A full first jump plus a double jump spends at most ~1.19s of air time in
-    // the normalised frame, so a full second of clear ground guarantees that even
-    // a worst-case double jump lands in empty space rather than on the next
-    // obstacle. Later tiers trim it only slightly.
-    var react = 1.00 - t * 0.03;         // seconds of empty ground ahead
-    // gapMul is an event/zone mood and multiplies the clear ground directly, so
-    // >1 means a sparser track and <1 a denser one. The low clamp is not a taste
-    // call: the true safety bound is ~0.82 (below that a worst-case double jump
-    // sails into the next pattern) and 0.88 is used to keep real margin on top of
-    // it. tools/verify_balance.py section 2b proves this floor is safe, and its
-    // GAP_FLOOR constant must be changed in step with this one.
-    var k = clamp(mulOf('gapMul'), 0.88, 2.0);
-    return (speed * react + 150) * k;
+    // Every prefab now includes a witnessed ground exit. The connector needs
+    // time for a speed blend and the next read, rather than another jump arc.
+    return speed * (t===0?.46:.30) * clamp(mulOf('gapMul'),.9,1.2);
   }
 
   function extendLevel() {
     var horizon = camX + VIEW_W + 700;
+    while (runways.length && runways[0].to < camX) runways.shift();
+    while (patternSegments.length && patternSegments[0].end < camX - 200) patternSegments.shift();
     while (gen.x < horizon) {
       var t = tier();
-      var pool = PATTERNS.filter(function(p){return p.min<=t && (runElapsed>=25||RouteDirector.family(p)!=='gap');});
-      var transition = Coast && runElapsed>=Coast.scene.startTime-8 && runElapsed<Coast.scene.startTime+8;
-      var arrivalTime=runElapsed+Math.max(0,gen.x-camX-PLAYER_X)/Math.max(speed,BASE_SPEED);
-      var rhythm=Experience.phase(arrivalTime);
-      var p = !Object.keys(patternCounts).length ? PATTERNS[0] : RouteDirector.choose(pool,{
-        recent:recentPatterns,tier:t,coast:isCoast(),transition:transition,phase:rhythm,spotlight:Experience.state().spotlightT>0
-      });
-      recentPatterns.push(p.id);
-      if (recentPatterns.length > Math.min(5, pool.length - 1)) recentPatterns.shift();
+      if (!Chunks) return; // A missing library never re-enables legacy generators.
+      var segEta = Math.max(0, gen.x - camX - PLAYER_X) / Math.max(speed, BASE_SPEED);
+      var naturalHere = speedAtRun(dist + segEta * speed, runElapsed + segEta) * mulOf('speedMul');
+      var transition = Coast && Math.abs(runElapsed-Coast.scene.startTime)<8;
+      var rhythm = Experience.phase(runElapsed+segEta);
+      var bandPool = Chunks.poolFor(naturalHere);
+      var p = null;
+      if (practice) {
+        p = Chunks.byId(practice.chunkId);
+      } else {
+        var requested = pendingChunkEvents[0];
+        if (requested && gen.x >= requested.earliest && !(requested.kind==='rice' && restStreak)) {
+          var eventPool = bandPool.filter(function(c){return c.event===requested.kind && c.min<=t;});
+          // Sweeping encounters are taught later; early requests use a safe slide prefab.
+          if (!eventPool.length && requested.kind==='sweep') eventPool=bandPool.filter(function(c){return c.event==='captcha';});
+          if (eventPool.length) {
+            p=pick(eventPool);pendingChunkEvents.shift();RouteDirector.record(p);
+          }
+        }
+        if (!p) {
+          var pool=bandPool.filter(function(c){
+            return !c.event && c.min<=t && (runElapsed>=25 || c.family!=='gap') && recentChunks.indexOf(c.chunkId)<0;
+          });
+          if (!pool.length) pool=bandPool.filter(function(c){return !c.event && c.min<=t;});
+          p=RouteDirector.choose(pool,{recent:recentPatterns,tier:t,coast:isCoast(),transition:transition,phase:rhythm});
+        }
+      }
+      if (!p) return;
+      recentPatterns.push(p.id);if(recentPatterns.length>5)recentPatterns.shift();
+      recentChunks.push(p.chunkId);if(recentChunks.length>8)recentChunks.shift();
 
       var o0 = obstacles.length, k0 = pickups.length;
       var platform0 = platforms.length, gap0 = trackGaps.length;
       patternCounts[p.id] = (patternCounts[p.id] || 0) + 1;
+      // The speed this beat is authored for. A frozen chunk was validated at
+      // exactly its band speed, so that is what it runs at — otherwise the
+      // clearance proof would not describe the run the player is having.
+      var designSpeed = p.speed;
+      if(runways.length)runways[runways.length-1].toSpeed=designSpeed;
       p.build(gen.x, t);
 
       // advance past what the pattern actually produced rather than a guessed width
@@ -1777,7 +1710,10 @@
       for (var i = o0; i < obstacles.length; i++) {
         var o = obstacles[i];
         xStart = Math.min(xStart, o.x);
-        xEndObst = Math.max(xEndObst, o.x + o.w);
+        // Swept extent, not art width: a swaying obstacle reaches `motion`
+        // beyond its art, and that reach must land inside the beat it belongs
+        // to rather than inside the recovery runway after it.
+        xEndObst = Math.max(xEndObst, o.x + o.w + (o.motion || 0));
       }
       for (var j = k0; j < pickups.length; j++) xEnd = Math.max(xEnd, pickups[j].x + 40);
       for (var pi = platform0; pi < platforms.length; pi++) {
@@ -1788,18 +1724,44 @@
         xStart = Math.min(xStart, trackGaps[gi].x);
         xEnd = Math.max(xEnd, trackGaps[gi].x + trackGaps[gi].w);
       }
-      xEnd = Math.max(xEnd, xEndObst);
-      if (xStart !== Infinity) auditPattern(p, o0, obstacles.length, t);
+      xEnd = Math.max(xEnd, xEndObst, gen.x + p.length);
+      var segment=window.DSRunSegments.capture({
+        id:p.id,chunkId:p.chunkId,frozen:true,topology:p.topology,motif:p.motif,family:RouteDirector.family(p),min:p.min||0,source:'chunk',
+        start:gen.x,end:xEnd,
+        role:p.role|| (RouteDirector.family(p)==='reward'?'release':'pressure'),
+        requiredActions:p.requiredActions||[],optionalActions:p.optionalActions||[],
+        safeRoute:p.safeRoute!==false,riskRoute:!!p.riskRoute,
+        recovery:p.recovery||'short',difficultyBudget:p.difficultyBudget||0,speed:designSpeed
+      },{obstacles:obstacles,platforms:platforms,gaps:trackGaps,pickups:pickups},
+      {obstacles:o0,platforms:platform0,gaps:gap0,pickups:k0},{start:gen.x,end:xEnd});
+      patternSegments.push({id:p.id,chunkId:p.chunkId,kind:'pattern',start:segment.start,end:xEnd,speed:designSpeed,frozen:!!p.frozen});
+      restStreak = p.family==='reward' ? restStreak+1 : 0;
+      generatedSegments.push(segment);
+      // Keep whole-segment rewards, now driven by the replayed chunk entities.
+      if (p.family!=='reward' && p.requiredActions.length>=2) {
+        var block={id:p.id,chunkId:p.chunkId,name:p.name,cue:'',kind:'chunk',frozen:true,
+          start:segment.start,end:segment.end,speed:p.speed,failed:false,done:false,entered:false,
+          entities:segment.obstacles.concat(segment.gaps,segment.platforms)};
+        block.entities.forEach(function(e){e.combo=block;});
+        actionBlocks.push(block);
+      }
+      // Prefabs were validated offline; the old runtime single-arc audit does
+      // not describe multi-action chunks and must not alter their geometry.
 
-      var adv = (xEnd - gen.x) + gapFor(t) * rand(1.0, 1.22) + 80;
+      var adv = (xEnd - gen.x) + gapFor(t);
 
       // sprinkle a powerup into the gap every so often
       gen.sincePower++;
       if (gen.sincePower >= randInt(5, 9)) {
         gen.sincePower = 0;
-        addPower(pick(POWERS), gen.x + adv * 0.55, GROUND_Y - rand(150, 250));
+        addPower(pick(POWERS), xEnd + (adv - (xEnd - gen.x)) * 0.55, GROUND_Y - rand(150, 250));
       }
+      Chunks.connectRice(xEnd-40,gen.x+adv);
       gen.x += adv;
+      // The declared recovery runway: clear ground between this beat's last
+      // entity and the next beat's first. Events queue whole future chunks.
+      segment.runway = { from: xEnd, to: gen.x, fromSpeed: designSpeed, ribbon:true };
+      runways.push(segment.runway);
     }
   }
 
@@ -1910,13 +1872,29 @@
       var p = platforms[i];
       var x = p.x - camX;
       if (x + p.w < -80 || x > VIEW_W + 80) continue;
-      if (src) {
-        var h = p.w * (src.naturalHeight || src.height) / (src.naturalWidth || src.width);
+      var collapse = platformCollapse(p);
+      var drop = Math.max(0, collapse - 0.5) * 68;
+      var alpha = 1 - Math.max(0, collapse) * .75;
+      var animated = collapseFrame(p);
+      var drawSrc = animated || src;
+      if (drawSrc) {
+        var h = p.w * (drawSrc.naturalHeight || drawSrc.height) / (drawSrc.naturalWidth || drawSrc.width);
         // The generated sprite has a little sky around its island. Align its
         // straight cloud-top edge with the one-way landing surface.
-        ctx.drawImage(src, x, p.y - h * 0.325, p.w, h);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(0, drop);
+        ctx.drawImage(drawSrc, x, p.y - h * 0.325, p.w, h);
+        if (p.collapseT !== null && collapse < 1) {
+          ctx.globalAlpha = .75;
+          ctx.strokeStyle = '#e4605e'; ctx.lineWidth = 3; ctx.setLineDash([8, 6]);
+          ctx.strokeRect(x + 8, p.y - 3, p.w - 16, 18);
+        }
+        ctx.restore();
       } else {
         ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(0, drop);
         ctx.fillStyle = '#76bde9';
         ctx.strokeStyle = '#365d9c';
         ctx.lineWidth = 4;
@@ -2021,7 +1999,26 @@
       var o = obstacles[i];
       var pose = obstaclePose(o);
       var sx = pose.x - camX;
-      if (sx < -220 || sx > VIEW_W + 220) continue;
+      if (sx+o.w < -220 || sx > VIEW_W + 220) continue;
+      if(o.kind==='route-roof'||o.kind==='route-spikes') {
+        ctx.save();
+        if(o.kind==='route-roof') {
+          var bottom=o.y+o.h;
+          ctx.fillStyle='rgba(201,226,240,.82)';ctx.fillRect(sx,o.y,o.w,o.h);
+          ctx.strokeStyle='#3d7199';ctx.lineWidth=4;ctx.strokeRect(sx,o.y,o.w,o.h);
+          ctx.fillStyle='#e7a14b';ctx.fillRect(sx,bottom-15,o.w,15);
+          ctx.strokeStyle='rgba(61,113,153,.22)';ctx.lineWidth=2;
+          for(var rail=o.y+30;rail<bottom-25;rail+=42){ctx.beginPath();ctx.moveTo(sx+6,rail);ctx.lineTo(sx+o.w-6,rail);ctx.stroke();}
+          ctx.fillStyle='#2f5d7e';ctx.font='bold 16px sans-serif';ctx.fillText('↓',sx+o.w/2-8,bottom-30);
+        }else {
+          ctx.fillStyle='#db7188';ctx.beginPath();ctx.moveTo(sx,o.y+o.h);
+          var teeth=Math.ceil(o.w/26),pitch=o.w/teeth;
+          for(var tooth=0;tooth<teeth;tooth++){ctx.lineTo(sx+tooth*pitch,o.y+14);ctx.lineTo(sx+(tooth+.5)*pitch,o.y);ctx.lineTo(sx+(tooth+1)*pitch,o.y+14);}
+          ctx.lineTo(sx+o.w,o.y+o.h);ctx.closePath();ctx.fill();ctx.strokeStyle='#9b405b';ctx.lineWidth=3;ctx.stroke();
+          ctx.fillStyle='#b64f69';ctx.fillRect(sx,o.y+18,o.w,o.h-18);
+        }
+        ctx.restore();continue;
+      }
       // contact shadow
       if (!o.bob) {
         ctx.globalAlpha = 0.3;
@@ -2031,9 +2028,29 @@
         ctx.fill();
         ctx.globalAlpha = 1;
       }
+      // A radially symmetric hazard reads as airborne: the spiked mine has no
+      // silhouette cue for "this is on the ground", and the counter-verb for a
+      // floating hazard is the wrong one (slide into it rather than jump it).
+      // Bolt it to the road. Presentation only — no box, no physics.
+      if (o.kind === 'mine') {
+        ctx.save();
+        ctx.fillStyle = 'rgba(40,54,86,.85)';
+        ctx.beginPath();
+        ctx.ellipse(sx + o.w / 2, GROUND_Y + 2, o.w * 0.40, 9, 0, 0, 6.2832);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(126,156,196,.55)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(sx + o.w / 2, GROUND_Y + 2, o.w * 0.26, 5.5, 0, 0, 6.2832);
+        ctx.stroke();
+        ctx.restore();
+      }
       var coastSkin = isCoast() && Coast.skin(o.kind);
       var skinArt = coastSkin && IMG['coast/' + coastSkin];
-      if (skinArt) {
+      var animatedArt = hazardFrame(o);
+      if (animatedArt) {
+        ctx.drawImage(animatedArt, sx, pose.y, o.w, o.h);
+      } else if (skinArt) {
         var blend=coastBlend();ctx.save();
         ctx.globalAlpha=1-blend;ctx.drawImage(o.img,sx,pose.y);
         ctx.globalAlpha=blend;ctx.drawImage(skinArt,sx+o.cfg.x,pose.y+o.cfg.y,o.cfg.w,o.cfg.h);
@@ -2059,6 +2076,26 @@
       if(o.kind==='spring'&&o.springUsed&&o.compressT>0){
         ctx.save();ctx.globalAlpha=o.compressT/.28;ctx.strokeStyle='#f4cd82';ctx.lineWidth=3;
         ctx.beginPath();ctx.ellipse(sx+o.w*.5,pose.y+10,o.w*(.6+.8*(1-o.compressT/.28)),9,0,0,Math.PI*2);ctx.stroke();ctx.restore();
+      }
+      if (o.trap === 'pulse') {
+        ctx.save();
+        ctx.globalAlpha = o.trapWarning ? .8 : .45;
+        ctx.strokeStyle = o.trapActive ? '#e4605e' : '#3fa97c';
+        ctx.lineWidth = o.trapWarning ? 5 : 3;
+        ctx.setLineDash(o.trapWarning ? [7, 5] : []);
+        ctx.strokeRect(sx + o.cfg.x - 12, pose.y + o.cfg.y - 12, o.cfg.w + 24, o.cfg.h + 24);
+        ctx.restore();
+      }
+      if (o.trap === 'cable' || o.trap === 'scout') {
+        ctx.save();
+        ctx.globalAlpha = .24 + (o.trapWarning ? .3 : 0);
+        ctx.strokeStyle = '#f2a93b'; ctx.lineWidth = 3; ctx.setLineDash([8, 8]);
+        ctx.beginPath();
+        var trackHalf = o.trap === 'scout' ? 58 : 18;
+        var trackY = o.trap === 'scout' ? 240 : 162;
+        ctx.moveTo(sx + o.w * .5 - trackHalf, GROUND_Y - trackY);
+        ctx.quadraticCurveTo(sx + o.w * .5, GROUND_Y - 28, sx + o.w * .5 + trackHalf, GROUND_Y - trackY);
+        ctx.stroke(); ctx.restore();
       }
       if (o.kind === 'turret' && o.attackT > 0 && o.attackT < .85) {
         ctx.save();
@@ -2295,10 +2332,13 @@
   // edge (the pad button and the ↓ key); `gestureDownT` is the swipe's hold,
   // which has no button left to report a release; `jumpFollowup` is the second
   // of two taps that landed inside the same simulation step.
-  var slideBuffer = 0, gestureDownT = 0, jumpFollowup = 0;
+  var slideBuffer = 0, gestureDownT = 0, jumpFollowup = 0, downPress = false;
 
   function slidePressed() {
     if (game.state !== 'playing') return;
+    // Keep both an edge and a short buffer: the edge makes an airborne press
+    // react immediately, while the buffer protects a very short ground press.
+    downPress = true;
     // A fresh press renews the minimum duration even during an existing slide.
     if (player.sliding) player.slideT = 0;
     slideBuffer = JUMP_BUFFER;
@@ -2309,6 +2349,7 @@
     slideBuffer = 0;
     gestureDownT = 0;
     jumpFollowup = 0;
+    downPress = false;
   }
 
   /** Forget the finger in flight, whatever it was about to do. */
@@ -2334,6 +2375,17 @@
   function jumpPressed() {
     if (game.state === 'title') { startRun(); return; }
     if (game.state === 'over') { if (game.overFade > 0.5) restart(); return; }
+    if (game.state === 'playing' && player.onGround) {
+      // Jumping takes priority over a ground slide press; the down hold still
+      // applies after take-off as fast-fall input.
+      player.sliding = false;
+      player.slideT = 0;
+      slideBuffer = 0;
+      downPress = false;
+      if (player.buffer > 0) jumpFollowup = JUMP_BUFFER;
+      else player.buffer = JUMP_BUFFER;
+      return;
+    }
     // Only buffer while actually running. Buffering under a modal would leave the
     // jump queued and fire it the instant the card picker closes, which reads as
     // the game jumping on its own.
@@ -2362,7 +2414,7 @@
     if (k === 'KeyB') { e.preventDefault(); if (!e.repeat) toggleShop(); return; }
     if (JUMP_KEYS.indexOf(k) >= 0) {
       e.preventDefault();
-      if (!keys[k]) { GameAudio.unlock(); jumpPressed(); }
+      if (!e.repeat) { GameAudio.unlock(); jumpPressed(); }
       keys[k] = true;
     } else if (k === 'ArrowDown' || k === 'KeyS') {
       e.preventDefault();
@@ -2431,7 +2483,9 @@
     var stage = document.getElementById('stage');
 
     stage.addEventListener('pointerdown', function (e) {
-      if (e.target.closest && e.target.closest('button')) return;
+      // Menu controls keep their native tap, focus and navigation behaviour.
+      // Capturing an anchor's pointer here retargets its click to the stage.
+      if (e.target.closest && e.target.closest('button,a,input,select,textarea,[role="button"],[contenteditable]')) return;
       // A mouse's secondary buttons are not game input: right-click belongs to
       // the context menu, middle-click to autoscroll.
       if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -2472,6 +2526,7 @@
         // keyboard's table would both expire in real time (behind a pause card)
         // and clobber a ↓ the player is still physically holding.
         gestureDownT = 0.52;
+        downPress = true;
       } else if (!touchStart.rightSide && e.clientX - touchStart.x > SWIPE_RIGHT) {
         touchStart.slid = true;
         endTouch();
@@ -2773,6 +2828,9 @@
   }
 
   function resetWorld() {
+    practice=null;actionBlocks.length=0;activeAction=null;pendingChunkEvents.length=0;
+    patternSegments.length=0;activePattern=null;runways.length=0;
+    actionStats={clears:0,failed:0,streak:0,best:0,lastFailure:''};
     // A new run must not inherit input aimed at the last one — including a
     // finger that is still down and would otherwise release into this run.
     clearInput();
@@ -2780,7 +2838,8 @@
     RouteDirector.reset();
     Experience.reset(styleRecord());
     player.landingT=0;
-    shots.length = 0; recentPatterns.length = 0; recentObstacleKinds.length = 0; pickupBag.length = 0;
+    shots.length = 0; recentPatterns.length = 0; recentChunks.length = 0; pickupBag.length = 0;
+    restStreak = 0;
     platforms.length = 0; trackGaps.length = 0;
     pickupArtIndex = 0;pickupFxT=-1;
     riskLines = {}; riskLineId = 0;
@@ -2801,6 +2860,7 @@
     zoneGoal = null; completedGoals = 0;
     levelAudit.length = 0;
     patternCounts = {};
+    generatedSegments.length = 0;
     hints.length = 0; seenHints = {};
     clearMods();
     player.shock = 0;
@@ -2809,7 +2869,8 @@
     player.cuttable = false;
     player.jumps = 0; player.sliding = false; player.slideT = 0;
     player.coyote = 0; player.buffer = 0; player.wince = 0; player.cheer = 0;
-    player.runT = 0; player.invuln = 0; player.shield = false;
+    player.runT = 0; player.invuln = 0; player.shield = false; player.softLock = 0;
+    downPress = false;
     // clearMods() and the skillLevels reset above must run first: dashMax() reads
     // both, and a charge count from the previous run would leak the old build in.
     player.dashT = 0; player.dashCd = 0; player.dashGrace = 0;
@@ -2825,9 +2886,12 @@
     updateHud();
   }
 
-  function startRun() {
+  function startRun(practiceConfig) {
+    if (!Chunks) { document.getElementById('loading').classList.remove('hide'); document.getElementById('loading').textContent='预制赛道库未加载，请检查 src/chunks-data.js 与 src/chunks.js。'; return; }
     hideOpenTip();
     resetWorld();
+    practice=practiceConfig||null;
+    if(practice){speed=practice.speed;gen.x=PLAYER_X+speed*1.8;}
     cx.shop.classList.add('hide');
     setSelecting(false);
     game.state = 'playing';
@@ -2841,7 +2905,7 @@
     extendLevel();
   }
 
-  function restart() { startRun(); }
+  function restart() { startRun(practice ? {id:practice.id,chunkId:practice.chunkId,speed:practice.speed,clears:0} : null); }
 
   function setPause(on) {
     if (on && game.state === 'playing') {
@@ -2905,6 +2969,7 @@
   }
 
   function deathAdvice(hit) {
+    if(hit&&hit.action)return hit.action+' · 提前读落点，用下砸衔接滑铲';
     if (!hit || hit.kind === 'gap') return '掉进跑道间隙 · 提前起跳，连续跳上云岛';
     if (hit.kind === 'drone') return '撞上低空障碍 · 按住 ↓ 滑铲通过';
     if (hit.airborne && hit.vy > 0 && hit.kind !== 'turret' && hit.kind !== 'gate' && hit.kind !== 'sentry') {
@@ -2925,11 +2990,13 @@
     // deliberately stays — it is part of the summary.
     hideEventBanner();
     var performance=Experience.summary();
-    try{localStorage.setItem('ds_whale_style_best',String(Math.max(styleRecord(),performance.bestStreak)));}catch(e){}
+    if(!practice)try{localStorage.setItem('ds_whale_style_best',String(Math.max(styleRecord(),performance.bestStreak)));}catch(e){}
     var ss=document.getElementById('skillSummary');
     ss.innerHTML='<b class="skillRank">'+performance.rank+'</b><div><strong>'+performance.title+'</strong><span>最高 '+performance.bestStreak+' 连突破 · '+performance.styles+' 种动作 · '+performance.spotlights+' 次鲸跃时刻</span><small>'+ (performance.recordBroken?'创造了新的连段纪录！':'下次目标：多连过一道障碍')+'</small></div>';
+    var extra=document.getElementById('actionSummary');
+    extra.textContent=(practice?'组合练习 · 不计入纪录 · ':'')+'整段突破 '+actionStats.clears+' 次 · 最长 '+actionStats.best+' 连段'+(actionStats.lastFailure?' · 失误：'+actionStats.lastFailure:'');
     var sc = Math.floor(game.score);
-    var isBest = sc > game.best;
+    var isBest = !practice && sc > game.best;
     if (isBest) { game.best = sc; saveBest(sc); }
     document.getElementById('sScore').textContent = groupNum(sc);
     document.getElementById('sRice').textContent = game.rice;
@@ -2998,10 +3065,22 @@
   }
 
   function damage(o) {
-    if (player.invuln > 0 || game.state !== 'playing') return;
+    if (player.invuln > 0 || player.softLock > 0 || game.state !== 'playing' || (o.combo && o.contactSpent)) return;
+    if (o && Specials.isSoft(o)) {
+      o.failed = true;
+      Experience.miss();
+      player.softLock = Math.max(player.softLock, .72);
+      game.combo = 0; game.comboT = 0;
+      game.score = Math.max(0, game.score - 12);
+      if (o.trap === 'cable') player.glideT = Math.max(0, player.glideT - .35);
+      popText(camX + PLAYER_X, player.y - 150, o.trap === 'cable' ? '滑翔受扰 -12' : '节奏打断 -12', '#dfa943', 24);
+      burst(camX + PLAYER_X, player.y - 96, { n: 12, col: ['#f2a93b', '#fff4cd', '#bff4ff'], sp0: 70, sp1: 220, r0: 2, r1: 6, l0: .2, l1: .45, g: 420 });
+      shake(5);
+      return;
+    }
     // GPU dash and the dash verb both plough through breakable obstacles. The
     // grace window covers the frames after the burst ends.
-    if (o.kind !== 'gap' && (player.power.chip > 0 ||
+    if (o.kind !== 'gap' && ((player.power.chip > 0 && !o.rigid) ||
         ((player.dashT > 0 || player.dashGrace > 0) && breakable(o)))) {
       shatter(o, player.power.chip > 0 ? null : { label: '冲刺撞碎!', labelCol: '#8affc1' });
       game.score += DASH_SCORE * scoreMul();
@@ -3010,10 +3089,11 @@
       return;
     }
     o.failed=true;
+    if(o.combo){o.contactSpent=true;o.combo.failed=true;actionStats.lastFailure=o.combo.name;}
     Experience.miss();
     if (player.shield) {
       player.shield = false;
-      player.invuln = 1.1;
+      player.invuln = .55;
       GameAudio.sfx('shieldBreak');
       burst(camX + PLAYER_X, player.y - 96, { n: 22, col: ['#8ff3ff', '#ffffff', '#5ec8ff'], sp0: 120, sp1: 420, r0: 3, r1: 8, l0: .3, l1: .7, g: 500 });
       popText(camX + PLAYER_X, player.y - 150, '护盾破碎', '#8ff3ff', 26);
@@ -3023,7 +3103,7 @@
     game.lives--;
     refreshLives();
     game.lastHit = {
-      kind: o.kind, hitboxH: Math.round(o.box.h), feetY: Math.round(player.y),
+      kind: o.kind, action: o.combo ? o.combo.name : '', hitboxH: Math.round(o.box.h), feetY: Math.round(player.y),
       vy: Math.round(player.vy), airborne: !player.onGround, speed: Math.round(speed)
     };
     player.wince = 0.55;
@@ -3156,7 +3236,7 @@
     }
     // ---- zones, events, milestones
     enterZone(zoneAt());
-    updateEvent(dt);
+    if(!practice)updateEvent(dt);
     updateMilestones();
     if (zoneTransition.t > 0) zoneTransition.t = Math.max(0, zoneTransition.t - dt / (isCoast() ? 4.8 : 2.4));
     if (sale.t > 0) {
@@ -3166,9 +3246,37 @@
     }
 
     // ---- speed & distance
-    // speedMul is an event-time multiplier on top of the difficulty curve, so the
-    // ramp itself is untouched and every clearance audit stays valid.
-    speed = speedAt(dist) * mulOf('speedMul');
+    // speedMul is an event-time multiplier on top of the difficulty curve. The
+    // phase multiplier adds a readable late-run escalation without changing the
+    // jump-height contract; gapFor() consumes this live speed below.
+    // The x every segment decision is made at, kept for introspection: the
+    // camera advances later in this same frame, so world().camX+PLAYER_X is
+    // one frame ahead of the position the speed was chosen for.
+    segmentX = camX + PLAYER_X;
+    activeAction=actionAt(segmentX);
+    activePattern=activeAction?null:patternAt(segmentX);
+    // Every beat locks the speed it was authored for, so its spacing, jump arcs
+    // and reaction windows are the ones it was built with. On the recovery
+    // runway between beats the live speed eases from the speed the beat ended
+    // at to the natural curve, over the whole runway — so the number a beat
+    // starts at is always the number it was validated at, and no modifier can
+    // bend the geometry a player is currently reading.
+    var naturalSpeed = speedAtRun(dist, runElapsed) * mulOf('speedMul');
+    // speedSource / speedEase are introspection: they say which rule set the
+    // number this frame, so a verifier can check the contract instead of
+    // re-deriving it and disagreeing by a float.
+    if (practice) { speed = practice.speed; speedSource = 'practice'; speedEase = 0; }
+    else if (activeAction) { speed = activeAction.speed; speedSource = 'action'; speedEase = 0; }
+    else if (activePattern) { speed = activePattern.speed; speedSource = 'pattern'; speedEase = 0; }
+    else {
+      var runway = runwayAt(segmentX);
+      if (runway) {
+        var ease = clamp((segmentX - runway.from) / Math.max(1, runway.to - runway.from), 0, 1);
+        speed = runway.fromSpeed + ((runway.toSpeed || naturalSpeed) - runway.fromSpeed) * ease;
+        speedSource = 'runway'; speedEase = ease;
+      } else { speed = naturalSpeed; speedSource = 'natural'; speedEase = 0; }
+    }
+    speedNatural = naturalSpeed;
     // Dash multiplies the GROUND COVERED, not `speed`. `speed` is read by
     // jumpK() (so every arc would change shape mid-run), by gapFor() through the
     // live generator, and by the audio intensity. `travel` is what the dash
@@ -3202,8 +3310,6 @@
     if (player.dashCd > 0) {
       player.dashCd = Math.max(0, player.dashCd - dt);
       if (player.dashCd === 0) player.charges = dashMax();
-    } else {
-      topUpCharges();
     }
 
     // ---- player horizontal is fixed; only vertical simulation
@@ -3217,7 +3323,10 @@
     if (slideBuffer > 0) slideBuffer -= dt;
     if (gestureDownT > 0) gestureDownT -= dt;
     if (jumpFollowup > 0) jumpFollowup -= dt;
-    var downRequested = downHeld() || slideBuffer > 0;
+    var downEdge = downPress;
+    var downRequested = downHeld() || slideBuffer > 0 || downEdge;
+    // The edge is consumed once; a held key/pad continues through downHeld().
+    downPress = false;
 
     // jump buffering / coyote
     if (player.buffer > 0) player.buffer -= dt;
@@ -3228,6 +3337,19 @@
       player.onGround = false;
       player.coyote = COYOTE;
       player.sliding = false;
+    }
+    if (player.onGround) {
+      var standingPlatform = platformAt(camX + PLAYER_X, player.groundY);
+      if (standingPlatform && standingPlatform.collapseT !== null &&
+          standingPlatform.collapseT >= standingPlatform.collapseDelay) {
+        player.onGround = false;
+        player.coyote = 0;
+        player.sliding = false;
+        player.groundY = GROUND_Y;
+        player.y = standingPlatform.y;
+        player.groundY = standingPlatform.y;
+        player.vy = 140;
+      }
     }
 
     // slide state. Dashing overrides the slide: a dash low to the ground still
@@ -3248,6 +3370,7 @@
     // jump
     if (player.buffer > 0) {
       if (player.onGround || player.coyote > 0) {
+        var jumpFromDown = downEdge || (downHeld() && !player.onGround);
         player.vy = JUMP_V * k;
         player.onGround = false; player.jumps = 1;
         player.coyote = 0; player.buffer = 0;
@@ -3260,6 +3383,12 @@
         player.riseMul = 1;
         player.fallMul = FALL_MUL;
         player.cuttable = true;
+        if (jumpFromDown && !downHeld()) {
+          // A simultaneous jump+down is a deliberate low hop, not a held-jump
+          // cut. Keep it below the normal ascent so the input order is stable.
+          player.vy = 220 * k;
+          player.cuttable = false;
+        }
         GameAudio.sfx('jump');
         burst(camX + PLAYER_X, player.y, { n: 10, col: ['#cdf3ff', '#8fd8ff', '#ffffff'], sp0: 60, sp1: 210, dir: Math.PI / 2, spread: 1.15, r0: 2, r1: 7, g: 420, l0: .2, l1: .5 });
       } else if (player.jumps < 2) {
@@ -3290,8 +3419,15 @@
       // AND the fall multiplier, so it fell far faster than either value implies.
       var g = GRAVITY * player.gravMul *
               (player.vy > 0 ? player.fallMul : player.riseMul);
-      // Stomp arming: ↓ is held while falling. The resolution itself happens in
-      // the collision pass below, where a real obstacle box is available.
+      // A fresh ↓ press during ascent is an intentional fast-fall request. Do
+      // this before gravity so the same simulation step starts the descent;
+      // holding ↓ then continues to arm the stomp once the player is falling.
+      if (downEdge && player.vy < 0) {
+        // Cross zero immediately so a down press during ascent is a real
+        // fast-fall request rather than merely a shortened jump.
+        player.vy = 220 * k;
+        player.cuttable = false;
+      }
       player.stompArm = downRequested && player.vy > 0;
       // Glide: hold jump past the apex. ↓ always wins — the check below turns a
       // held ↓ into the ordinary fast-fall, so a glide can never strand the
@@ -3319,6 +3455,15 @@
         player.y = landedAt; player.groundY = landedAt;
         player.vy = 0;
         player.onGround = true;
+        if (downRequested && player.dashT === 0) {
+          player.sliding = true;
+          player.slideT = 0;
+          GameAudio.sfx('slide');
+        }
+        var landedPlatform = platformAt(camX + PLAYER_X, landedAt);
+        if (landedPlatform && landedPlatform.collapseDelay > 0 && landedPlatform.collapseT === null) {
+          landedPlatform.collapseT = 0;
+        }
         player.jumps = 0;
         player.landingT=.18;
         player.gravMul = 1;
@@ -3343,6 +3488,7 @@
     }
 
     // ---- level
+    updatePlatforms(dt);
     extendLevel();
     pruneTrackFeatures();
     updateHints();
@@ -3366,6 +3512,7 @@
     for (var i = obstacles.length - 1; i >= 0; i--) {
       var o = obstacles[i];
       if (o.dead || o.x - camX < -260) { obstacles.splice(i, 1); continue; }
+      if (!Specials.active(o)) continue;
       var ob = obstacleBox(o);
       if(o.kind==='spring'&&o.springUsed)continue;
       if (aabb(pb, ob)) {
@@ -3380,6 +3527,7 @@
     }
 
     updatePerformance();
+    updateActionBlocks();
     var spotlightOn=Experience.state().spotlightT>0;
     var magnetOn = player.power.magnet > 0 || spotlightOn;
     var px = camX + PLAYER_X, py = player.y - 84;
@@ -3442,6 +3590,7 @@
     game.flash = Math.max(0, game.flash - dt * 3.2);
     if (player.wince > 0) player.wince -= dt;
     if (player.invuln > 0) player.invuln -= dt;
+    if (player.softLock > 0) player.softLock -= dt;
     if (player.cheer > 0) player.cheer -= dt;
     player.landingT=Math.max(0,(player.landingT||0)-dt);
     if (player.shock > 0) player.shock -= dt;
@@ -3814,6 +3963,7 @@
       k = availH / (VH - crop);
     }
     stage.style.setProperty('--crop', crop + 'px');
+    stage.style.setProperty('--stage-scale', k);
     stage.style.transform = 'scale(' + k + ')';
     resizeCanvas(k);
     // The rotate card covers the whole cabinet on a portrait phone, and a run
@@ -3901,6 +4051,10 @@
     document.getElementById('btnStart').addEventListener('click', function () {
       GameAudio.unlock(); GameAudio.sfx('ui'); startRun();
     });
+    var practiceSelect=document.getElementById('practiceRoute');
+    chunkTemplates.sort(function(a,b){return (b.handcrafted?1:0)-(a.handcrafted?1:0)||a.min-b.min;});
+    chunkTemplates.forEach(function(p){var option=document.createElement('option');option.value=p.id;option.textContent=p.name;practiceSelect.appendChild(option);});
+    document.getElementById('btnPractice').addEventListener('click',function(){GameAudio.unlock();startPractice(practiceSelect.value,document.getElementById('practicePace').value);});
     document.getElementById('btnPause').addEventListener('click', function () { GameAudio.sfx('ui'); togglePause(); });
     document.getElementById('btnShop').addEventListener('click', function () { GameAudio.sfx('ui'); toggleShop(); });
     document.getElementById('btnSound').addEventListener('click', function () { toggleMute(); });
@@ -4019,6 +4173,7 @@
       });
       auditContentTags();
       auditZoneArt();
+      ['pulse','cable','scout','collapse'].forEach(function (key) { animFrame(key, 0); });
       document.getElementById('loading').classList.add('hide');
       showTitle();
       requestAnimationFrame(frame);
@@ -4036,11 +4191,18 @@
   // Read-only introspection hook. Used by the headless autopilot smoke test and
   // handy in the devtools console; it cannot mutate the run.
   window.DSGame = {
+    practice:startPractice,
+    actionTemplates:function(){return chunkTemplates;},
     state: function () { return game; },
     player: function () { return player; },
     world: function () {
-      return { camX: camX, speed: speed, dist: dist, obstacles: obstacles, pickups: pickups,
-        powerups: powerups, platforms: platforms, gaps: trackGaps, zone:zoneIdx, time:worldT, runElapsed:runElapsed, coastApproachShown:coastApproachShown, transition:zoneTransition.t, tier:tier(), event:eventDef };
+      return { camX: camX, speed: speed, dist: dist, speedBase:speedAtRun(dist,runElapsed), speedMul:mulOf('speedMul'),
+        obstacles: obstacles, pickups: pickups,
+        powerups: powerups, platforms: platforms, gaps: trackGaps, segments:generatedSegments,
+        runways:runways, activeSegment:activeAction||activePattern, playerX:PLAYER_X, segmentX:segmentX, chunks:Chunks?Chunks.count:0,
+        restStreak:restStreak, pendingChunkEvents:pendingChunkEvents, chunkDirector:RouteDirector.state(),
+        speedSource:speedSource, speedEase:speedEase, speedNatural:speedNatural,
+        zone:zoneIdx, time:worldT, runElapsed:runElapsed, coastApproachShown:coastApproachShown, transition:zoneTransition.t, tier:tier(), event:eventDef, actions:actionStats, action:activeAction, practice:practice };
     },
     box: playerBox,
     lastHit: function () { return game.lastHit; },
@@ -4050,6 +4212,7 @@
     // a pattern that is never picked and a hint that never fires look exactly
     // like a run that simply did not get that far.
     patternCounts: function () { return patternCounts; },
+    animatedFrames: function () { return { count: ANIM_FRAMES, loaded: Object.keys(animatedSheets) }; },
     hints: function () { return { pending: hints, seen: seenHints }; },
     experience:function(){return Experience.state();},
     performance:function(){return Experience.summary();}

@@ -1,3 +1,4 @@
+/* Legacy reference only: not loaded by index.html or the prefab compiler. */
 /* Shared procedural encounters for the city and sunset road. */
 (function(global){
   'use strict';
@@ -6,6 +7,19 @@
     function scale(){return a.scale();}
     function ground(x){return a.addObstacle(pick(['patrol','crystals','mine']),x);}
     function arc(x,y,n,dx){a.addRiceArc(x,y,n,dx);}
+    // Reward trails draw from the shape library (src/reward-shapes.js) instead
+    // of always being the same sine arc. y is the LOWEST point of the trail and
+    // amp how far it climbs; a shape never repeats twice in a row.
+    var SHAPES = global.DSRewardShapes;
+    var lastShape = null;
+    function trail(x,y,n,dx,amp,name){
+      var shape = name || (SHAPES ? SHAPES.pick(r, lastShape) : 'arc');
+      lastShape = shape;
+      var fn = SHAPES && SHAPES.shapes[shape];
+      if(!fn){a.addRiceArc(x,y,n,dx);return shape;}
+      fn(x,y,n,dx,amp,function(px,py){a.addRice(px,py);});
+      return shape;
+    }
     // The platform builder returns the actual jittered position. Pickups follow
     // that surface, so random height and width never detach the reward trail.
     function island(x,y,w){var p=a.addPlatform(x,y,w);a.addRiceLine(p.x+28,p.y-70,Math.max(2,Math.floor((p.w-30)/57)),57);return p;}
@@ -65,7 +79,7 @@
         for(var i=0;i<n;i++){var o=ground(x+i*pitch);arc(o.x-50,600-o.h-65,ri(4,6),46);}
       }},
       {id:'slide-jump-shuffle',min:3,family:'mixed',build:function(x){
-        var k=scale(),reverse=Math.random()<.5,pitch=r(820,940)*k;
+        var k=scale(),reverse=r(0,1)<.5,pitch=r(820,940)*k;
         for(var i=0;i<3;i++){
           var at=x+i*pitch,slide=(i%2===0)===reverse;
           if(slide){a.addObstacle('drone',at,{float:142,bob:6,motion:ri(0,1)?32:0});a.addRiceLine(at-50,544,5,49);}
@@ -82,26 +96,38 @@
         for(var i=0;i<2;i++){var kind=pick(['patrol','crystals']);var o=a.addObstacle(kind,x+i*pitch,{motion:kind==='patrol'?ri(6,8):0});arc(o.x-55,600-o.h-62,5,46);}
       }},
       {id:'slide-hop-triplet',min:2,family:'mixed',trial:1,build:function(x){
-        var k=scale(),pitch=r(760,850)*k,reverse=Math.random()<.5;
+        var k=scale(),pitch=r(760,850)*k,reverse=r(0,1)<.5;
         for(var i=0;i<3;i++){
           var at=x+i*pitch,slide=(i%2===0)!==reverse;
           if(slide){a.addObstacle('drone',at,{float:142,bob:6,motion:24});a.addRiceLine(at-35,544,5,47);}
           else{var kind=pick(['patrol','crystals']);var o=a.addObstacle(kind,at,{motion:kind==='patrol'?8:0});arc(at-50,600-o.h-62,5,46);}
         }
       }},
+      // The risk ribbon stays straight — it is a ribbon, and its value is the
+      // unbroken run — but the decoy trail above it is a different shape every
+      // time, so the beat never looks the same twice.
       {id:'rush-ribbon',min:0,family:'reward',build:function(x){
-        var n=ri(12,17),dx=r(52,60);a.addRiskLine(x,520,n,dx);
-        arc(x+160,395,7,52);a.addRice(x+(n-2)*dx,495,'bigrice');
+        var n=ri(10,17),dx=r(48,64),y=r(500,545);
+        a.addRiskLine(x,y,n,dx);
+        trail(x+r(60,200),y-r(80,150),ri(6,10),r(46,60),r(60,140));
+        a.addRice(x+(n-2)*dx,y-r(20,60),'bigrice');
       }},
       {id:'cargo-payday',devices:['cargo'],min:1,intro:'cargo',family:'obstacle',build:function(x){
         var k=scale(),at=x+r(0,80)*k;
         a.addObstacle('cargo',at);arc(at-50,435,ri(4,6),48*k);
         a.addRiceLine(at+250*k,520,ri(3,5),55*k);a.hint('cargo',at-180);
       }},
+      // The spring's ONLY real advantage is that it can be followed by a double
+      // jump: 285px + 105px = 390px of reach, against 342px for jump+double-jump
+      // on flat ground. So the island it leads to has to sit inside that 48px
+      // band (feet y between 210 and 258) or the spring is decoration — and at
+      // the old y=430 it literally was: a plain jump already reached it.
       {id:'spring-vault',devices:['spring'],min:1,intro:'spring',family:'mixed',build:function(x){
         var k=scale(),at=x+r(0,55)*k;
-        a.addObstacle('spring',at);island(at+r(300,340)*k,r(430,460),r(235,270)*k);
-        arc(at+110*k,305,6,50*k);a.addRice(at+265*k,255,'bigrice');
+        a.addObstacle('spring',at);
+        var p=island(at+r(300,340)*k,r(235,250),r(235,270)*k);
+        arc(at+110*k,305,6,50*k);
+        a.addRice(p.x+p.w*.5,p.y-95,'bigrice');
         a.addRiceLine(at+90*k,530,4,60*k);a.hint('spring',at-180);
       }},
       {id:'signal-choice',devices:['buoy'],min:2,intro:'buoy',family:'obstacle',build:function(x){
@@ -140,18 +166,77 @@
         a.addObstacle('cargo',pit+w+850*k);arc(pit+w+800*k,435,5,48*k);
         a.hint('buoy',at-180);a.hint('gap',pit-260);
       }},
+      // A fan of two or three trails at different heights and shapes, with the
+      // big rice at the crown of the highest one.
       {id:'rice-fan',min:0,family:'reward',build:function(x){
-        var n=ri(7,11),dx=r(55,72),rise=ri(12,20);
-        for(var i=0;i<n;i++)a.addRice(x+i*dx,520-Math.min(i,n-1-i)*rise,i===Math.floor(n/2)?'bigrice':'rice');
+        var lanes=ri(2,3),dx=r(55,72);
+        var top=null;
+        for(var L=0;L<lanes;L++){
+          var y=r(430,545),n=ri(6,10),amp=r(50,130);
+          var name=trail(x+r(0,90),y,n,dx,amp);
+          if(!top||y-amp<top.y)top={x:x+Math.floor(n/2)*dx,y:y-amp};
+        }
+        if(top&&top.y>250)a.addRice(top.x,top.y,'bigrice');
+        else a.addRice(top?top.x:x,520,'bigrice');
       }},
+      // Two trails in opposite phase: one climbing while the other falls.
       {id:'rice-switchback',min:1,family:'reward',build:function(x){
-        var n=ri(8,13),dx=r(58,76),phase=r(0,Math.PI);
-        for(var i=0;i<n;i++)a.addRice(x+i*dx,465-Math.sin(i*.65+phase)*75);
-        a.addRiceLine(x+75,540,5,68);
+        var dx=r(58,76),n=ri(7,11);
+        trail(x,520,n,dx,r(70,130),pick(['zigzag','stair','ladder','bounce']));
+        var back=x+r(120,240),m=ri(5,8);
+        trail(back,r(480,540),m,dx,r(60,120),pick(['vee','peak','comet','wave']));
+        a.addRiceLine(x+75,540,ri(3,5),68);
       }},
+      // Two shaped trails in sequence plus an overhead prize.
       {id:'rice-double-arc',min:1,family:'reward',build:function(x){
-        var dx=r(50,65);arc(x,440,6,dx);arc(x+430,405,6,dx);
-        a.addRice(x+570,340,'bigrice');a.addRiceLine(x+200,530,4,65);
+        var dx=r(50,65),first=r(150,240);
+        trail(x,r(430,470),ri(5,8),dx,r(70,120));
+        trail(x+first,r(390,430),ri(5,8),dx,r(70,130));
+        a.addRice(x+first+r(120,220),r(300,380),'bigrice');
+        a.addRiceLine(x+200,530,ri(3,5),65);
+      }},
+      {id:'vertical-switchback',min:2,family:'platform',build:function(x){
+        var k=scale(),start=x+150*k,pitch=r(270,295)*k;
+        a.addTrackGap(start-100*k,(pitch*3)+260*k);
+        var heights=[80,170,105,190];
+        for(var i=0;i<4;i++){
+          var p=island(start-95*k+i*pitch,600-heights[i],r(205,235)*k);
+          if(i===1||i===3)a.addRice(p.x+p.w*.5,p.y-125,'bigrice');
+        }
+        a.hint('vertical',start-330);
+      }},
+      {id:'skyline-weave',min:3,family:'mixed',build:function(x){
+        var k=scale(),start=x+120*k,pitch=r(300,325)*k;
+        a.addTrackGap(start-70*k,pitch*3+260*k);
+        island(start-60*k,520,225*k);
+        island(start+pitch-45*k,405,220*k);
+        island(start+pitch*2-35*k,500,235*k);
+        island(start+pitch*3-25*k,385,220*k);
+        a.addObstacle('drone',start+pitch-5*k,{float:142,bob:6,soft:true});
+        a.addObstacle('drone',start+pitch*2+35*k,{float:160,bob:6,soft:true});
+        a.addRiceArc(start+pitch-15*k,335,5,48*k);
+        a.hint('vertical',start-300);
+      }},
+      {id:'drop-and-dodge',min:3,family:'mixed',build:function(x){
+        var k=scale(),start=x+130*k,pitch=r(285,315)*k;
+        a.addTrackGap(start-80*k,pitch*2+340*k);
+        island(start-65*k,425,225*k);
+        island(start+pitch-35*k,485,230*k);
+        island(start+pitch*2-15*k,540,240*k);
+        a.addObstacle('mine',start+pitch*2+300*k,{motion:ri(12,24)});
+        a.addRiceArc(start+pitch-10*k,350,5,48*k);
+        a.hint('vertical',start-310);
+      }},
+      {id:'air-traffic',min:4,family:'obstacle',build:function(x){
+        var k=scale(),pitch=r(760,850)*k;
+        for(var i=0;i<3;i++){
+          var at=x+i*pitch;
+          a.addObstacle('drone',at,{float:i===1?160:142,bob:6,motion:i===1?42:0,soft:true});
+          if(i<2)a.addRiceLine(at+180*k,600-55,4,48*k);
+        }
+        var o=ground(x+pitch*3);
+        arc(o.x-55,600-o.h-66,5,48*k);
+        a.hint('scout',x-220);
       }}
     ];
     var originalFamilies={rice:'reward','wave-trail':'reward','glide-trail':'reward','cloud-bridge':'gap','island-hop':'gap','fork-trail':'mixed',choice:'mixed','sweep-and-hop':'mixed','slide-then-wall':'mixed','stomp-chain':'obstacle','slide-corridor':'obstacle','dash-lane':'obstacle'};
@@ -167,14 +252,19 @@
           !(families.length>=2&&families[families.length-1]===f&&families[families.length-2]===f);
       });
       if(!candidates.length)candidates=pool.filter(function(p){return !safe||family(p)==='reward';});
+      if(!candidates.length)return null;
       var weighted=candidates.map(function(p){
         var f=family(p),weight=p.family?1.45:1;
         if(f==='gap')weight*=opt.tier===0?.4:opt.coast?1.7:1.5;
         if(f==='platform')weight*=1.55;
         if(f==='mixed')weight*=opt.coast?1.9:opt.tier>=3?1.3:.8;
-        if(f==='reward')weight*=safe?4:.85;
+        // Reward beats are the breather, not the staple: at 4x/2.5x they took
+        // every other pick and the track averaged under one obstacle per beat.
+        // Still clearly favoured when the player needs a rest, no longer the
+        // default answer to every safe phase.
+        if(f==='reward')weight*=safe?2.2:.7;
         if(!safe&&opt.phase==='flow'){
-          if(f==='reward')weight*=2.5;
+          if(f==='reward')weight*=1.3;
           if(f==='platform')weight*=1.5;
         }
         if(!safe&&opt.phase==='pressure'){
@@ -183,9 +273,12 @@
           if(f==='mixed'||f==='obstacle')weight*=4.5;
           if(p.trial)weight*=2.3;
         }
-        if(!safe&&opt.phase==='release')weight*=f==='reward'?5:f==='gap'?.25:.6;
+        if(!safe&&opt.phase==='release')weight*=f==='reward'?2.6:f==='gap'?.25:.6;
         if(p.id==='rush-ribbon'&&(opt.phase==='release'||opt.spotlight))weight*=3;
         if(opt.spotlight&&f==='reward')weight*=2;
+        // A pattern may declare its own pull (frozen chunks rank themselves by
+        // how many obstacle KINDS they combine).
+        if(p.weightBoost)weight*=p.weightBoost;
         return {p:p,w:weight/(1+(counts[p.id]||0)*.12)};
       });
       var total=weighted.reduce(function(sum,e){return sum+e.w;},0),roll=r(0,total),chosen=weighted[weighted.length-1].p;
